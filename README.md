@@ -119,9 +119,8 @@ The catalogs (`booksite.html`, `moviesite.html`) use `localStorage` to persist d
 |---|---|
 | Tailwind CSS (CDN) | All projects |
 | Three.js | `horror.html` |
-| Chart.js | `banana_bread.html`, `workout.html` |
+| Chart.js | `banana_bread.html` |
 | Web Audio API | `WebDawPro.html`, `horror.html` |
 | Google Fonts | `banana_bread.html`, `brft3.html`, `minesweeper.html`, `vagabond.html`, `SilentHill1Good_EndingGuide.html` |
 | Lucide Icons | `WebDawPro.html` |
-| Font Awesome | `workout.html` |
 | localStorage | `booksite.html`, `moviesite.html` |
