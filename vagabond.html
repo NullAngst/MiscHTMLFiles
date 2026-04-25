@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="description" content="The Vagabond's Dossier: a comprehensive interactive survival guide for nomadic life in the United States.">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Vagabond's Dossier: An Interactive Survival Guide</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Special+Elite&family=Roboto+Condensed:wght@400;700&display=swap');
+        body {
+            font-family: 'Roboto Condensed', sans-serif;
+            background-color: #3d3b35;
+            color: #d4d4d4; /* neutral-300 */
+            background-image: url('https://www.transparenttextures.com/patterns/crissxcross.png'), url('https://www.transparenttextures.com/patterns/low-contrast-linen.png');
+            background-color: #383633;
+        }
+        /* Chosen Palette: Worn Field Journal */
+        /* Application Structure Plan: A two-column layout for desktop, with a fixed left sidebar for primary navigation and a scrollable main content area on the right. This allows constant access to all sections while exploring detailed content. On mobile, the sidebar collapses into a horizontal top bar to maximize screen real estate. This structure is chosen to create a more immersive, "dossier" or "field manual" experience, separating navigation from content more distinctly than the previous top-nav design. */
+        /* Visualization & Content Choices:
+            - Report Info: All sections now utilize a standardized two-panel layout (selection list on left, details on right) for a consistent, rugged user experience.
+            - Viz/Presentation: The styling is shifted to be less minimal. A typewriter font ('Special Elite') is used for headings and UI elements. The color palette is now muted olive greens, browns, and ambers. Borders are thicker, and a paper texture is added to the content area for a less "clean," more analog feel.
+            - Interaction: The core JS logic is adapted for the new sidebar navigation and the standardized two-panel detail view.
+        */
+        /* CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. */
+
+        .heading-font {
+            font-family: 'Special Elite', monospace;
+        }
+        .sidebar-nav-item.active {
+            background-color: #854d0e; /* amber-800 */
+            color: #fefce8; /* yellow-50 */
+            border-left-color: #facc15; /* yellow-400 */
+        }
+        .sidebar-nav-item {
+            font-family: 'Special Elite', monospace;
+            transition: all 0.2s ease-in-out;
+            border-left: 4px solid #4d4944;
+            color: #a8a29e;
+            font-size: 1.1rem;
+        }
+        .sidebar-nav-item:hover {
+            background-color: #4d4944; /* darker stone */
+            border-left-color: #a8a29e;
+        }
+        .content-section {
+            display: none;
+        }
+        .content-section.active {
+            display: block;
+        }
+        .main-card {
+            background-color: #292524; /* stone-800 */
+            border: 2px solid #44403c; /* stone-700 */
+        }
+        .secondary-card {
+             background-color: #1c1917;
+             border: 1px solid #44403c;
+        }
+        .detail-view-btn.active {
+            background-color: #854d0e; /* amber-800 */
+            color: #fefce8; /* yellow-50 */
+            border-color: #facc15;
+        }
+        .paper-texture {
+            background-color: #404040;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4' viewBox='0 0 4 4'%3E%3Cpath fill='%23525252' fill-opacity='0.4' d='M1 3h1v1H1V3zm2-2h1v1H3V1z'%3E%3C/path%3E%3C/svg%3E");
+        }
+        .detail-view-list {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        .detail-view-list-buttons {
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+        #mobile-nav::-webkit-scrollbar {
+            display: none; /* Hide scrollbar for Chrome, Safari and Opera */
+        }
+        #mobile-nav {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+    </style>
+</head>
+<body class="bg-neutral-800 text-neutral-300">
+
+    <div class="md:flex h-screen">
+        <!-- Sidebar Navigation (Desktop) -->
+        <aside class="hidden md:block md:w-64 bg-neutral-900 text-neutral-200 flex-shrink-0 p-4 border-r-4 border-black md:fixed md:h-full overflow-y-auto">
+            <h1 class="heading-font text-3xl font-bold text-center text-yellow-500 mb-8 mt-2">VAGABOND'S<br>DOSSIER</h1>
+            <nav id="desktop-nav" class="space-y-3">
+                <a href="#" data-section="ethos" class="sidebar-nav-item active flex items-center p-3">
+                    <span class="text-xl mr-3">🤔</span><span>Ethos</span>
+                </a>
+                <a href="#" data-section="daytoday" class="sidebar-nav-item flex items-center p-3">
+                    <span class="text-xl mr-3">⚙️</span><span>Day-to-Day</span>
+                </a>
+                <a href="#" data-section="travel" class="sidebar-nav-item flex items-center p-3">
+                    <span class="text-xl mr-3">📅</span><span>Travel</span>
+                </a>
+                <a href="#" data-section="weather" class="sidebar-nav-item flex items-center p-3">
+                    <span class="text-xl mr-3">🌦️</span><span>Weather</span>
+                </a>
+                <a href="#" data-section="transport" class="sidebar-nav-item flex items-center p-3">
+                    <span class="text-xl mr-3">🗺️</span><span>Transport</span>
+                </a>
+                <a href="#" data-section="shelter" class="sidebar-nav-item flex items-center p-3">
+                    <span class="text-xl mr-3">⛺</span><span>Shelter</span>
+                </a>
+                <a href="#" data-section="gear" class="sidebar-nav-item flex items-center p-3">
+                    <span class="text-xl mr-3">🎒</span><span>Gear</span>
+                </a>
+                <a href="#" data-section="sustain" class="sidebar-nav-item flex items-center p-3">
+                    <span class="text-xl mr-3">💰</span><span>Sustain</span>
+                </a>
+                <a href="#" data-section="needs" class="sidebar-nav-item flex items-center p-3">
+                    <span class="text-xl mr-3">💧</span><span>Needs</span>
+                </a>
+                <a href="#" data-section="emergencies" class="sidebar-nav-item flex items-center p-3">
+                    <span class="text-xl mr-3">🚑</span><span>Emergencies</span>
+                </a>
+                <a href="#" data-section="survive" class="sidebar-nav-item flex items-center p-3">
+                    <span class="text-xl mr-3">⚠️</span><span>Survive</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col overflow-hidden md:ml-64">
+            <!-- Mobile Navigation -->
+            <nav id="mobile-nav" class="md:hidden bg-neutral-900 p-2 flex flex-nowrap justify-start items-center border-b-2 border-black sticky top-0 z-20 overflow-x-auto">
+                <!-- Mobile nav items populated by JS -->
+            </nav>
+
+            <main class="flex-1 overflow-y-auto p-4 md:p-8 paper-texture">
+                <!-- Ethos Section -->
+                <section id="ethos" class="content-section active">
+                    <div class="main-card p-6 rounded-lg shadow-lg">
+                        <h2 class="heading-font text-4xl font-bold text-yellow-500 mb-6 border-b-2 border-yellow-700 pb-2">The Ethos</h2>
+                        <div class="space-y-8">
+                            <div>
+                                <h3 class="heading-font text-2xl font-bold mb-3 text-lime-300">Redefining Wealth: Time over Money</h3>
+                                <p class="text-stone-300">Vagabonding is not a vacation; it's a deliberate value adjustment away from the tyranny of the clock and the dollar. Society teaches us to equate experience with a cash value, trapping us in a cycle of earning to consume. The vagabond rejects this. The goal is not to accumulate possessions, but to expand personal options. True wealth on the road is measured in autonomy, experience, and—most critically—time. By consciously simplifying needs, one buys freedom, not with money, but with the deliberate choice to live differently.</p>
+                            </div>
+                             <div>
+                                <h3 class="heading-font text-2xl font-bold mb-3 text-lime-300">Embrace the Suck: The Mental Game</h3>
+                                <p class="text-stone-300 mb-4">A nomadic life is a demanding discipline. It requires immense patience and the ability to adapt to constant uncertainty. Waiting is a fundamental part of low-cost travel—for a ride, a meal, a resource. A core tenet is to "embrace the suck" - to accept discomfort, boredom, and frustration not as failures, but as integral parts of the experience. The most crucial skill is trusting your gut; if a person, place, or situation feels wrong, it is. Learning to say 'no' is a primary survival tactic. This is not paranoia; it is proactive risk management in an unpredictable environment. Maintaining a clean appearance and a positive attitude is a strategic necessity for managing social interactions and ensuring personal safety.</p>
+                            </div>
+                            <div>
+                                <h3 class="heading-font text-2xl font-bold mb-3 text-lime-300">Vagabond vs. Digital Nomad</h3>
+                                <p class="text-stone-300">It's crucial to distinguish the vagabond from the digital nomad. The digital nomad often seeks to optimize their position *within* the global economic system, leveraging a Western wage against a lower cost of living. It is a brilliant financial strategy. The vagabond, conversely, seeks a degree of freedom *from* that system. This is not a judgment, but a critical distinction in philosophy and strategy. The digital nomad requires constant connectivity and marketable online skills. The vagabond requires resourcefulness, patience, and a high tolerance for discomfort and uncertainty. One masters systems of technology and commerce; the other masters systems of people, nature, and self-reliance.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Day-to-Day Section -->
+                <section id="daytoday" class="content-section">
+                    <div class="text-center mb-8">
+                        <h2 class="heading-font text-4xl font-bold text-stone-100 mb-2">Day-to-Day Operations</h2>
+                        <p class="max-w-3xl mx-auto text-stone-400">This is a crash course in the daily rhythm of vagabonding. Success is built on routine, discipline, and constant forward planning.</p>
+                    </div>
+                    <div id="daytoday-view" class="flex flex-col lg:flex-row gap-8">
+                        <!-- Day-to-day view populated by JS -->
+                    </div>
+                </section>
+
+                <!-- Travel (formerly Plan) Section -->
+                <section id="travel" class="content-section">
+                    <div class="text-center mb-8">
+                        <h2 class="heading-font text-4xl font-bold text-stone-100 mb-2">Travel: Regional Dossiers</h2>
+                        <p class="max-w-3xl mx-auto text-stone-400">A core survival strategy is seasonal migration. This tool helps you visualize where to be throughout the year. Select a season to review detailed intel.</p>
+                    </div>
+                    <div id="travel-dossier-view" class="flex flex-col lg:flex-row gap-8">
+                        <!-- Travel (Plan) view populated by JS -->
+                    </div>
+                </section>
+
+                <!-- Weather Section -->
+                <section id="weather" class="content-section">
+                    <div class="text-center mb-8">
+                        <h2 class="heading-font text-4xl font-bold text-stone-100 mb-2">Seasonal Weather Risks</h2>
+                        <p class="max-w-3xl mx-auto text-stone-400">Understanding regional weather is critical for survival. This guide provides a strategic overview of average temperatures and severe weather threats across the country, month by month, to help you stay safe and comfortable.</p>
+                    </div>
+                    <div id="weather-view" class="flex flex-col lg:flex-row gap-8">
+                        <!-- Weather view populated by JS -->
+                    </div>
+                </section>
+
+                <!-- Transport Section -->
+                <section id="transport" class="content-section">
+                    <div class="text-center mb-8">
+                        <h2 class="heading-font text-4xl font-bold text-stone-100 mb-2">Transport: Risk vs. Reward</h2>
+                        <p class="max-w-3xl mx-auto text-stone-400">Your method of transport shapes your entire journey. This section provides an in-depth comparison of common methods, balancing speed, cost, and the significant physical and legal risks involved.</p>
+                    </div>
+                    <div id="transport-view" class="flex flex-col lg:flex-row gap-8">
+                        <!-- Transport (Travel) view populated by JS -->
+                    </div>
+                </section>
+
+                <!-- Shelter Section -->
+                <section id="shelter" class="content-section">
+                    <div class="text-center mb-8">
+                        <h2 class="heading-font text-4xl font-bold text-stone-100 mb-2">Shelter: Finding Sanctuary</h2>
+                        <p class="max-w-3xl mx-auto text-stone-400">Securing safe, legal shelter is a nightly challenge. Click a method to review its core strategy and risks.</p>
+                    </div>
+                     <div id="shelter-view" class="flex flex-col lg:flex-row gap-8">
+                        <!-- Shelter view populated by JS -->
+                    </div>
+                </section>
+
+                <!-- Gear Section -->
+                <section id="gear" class="content-section">
+                    <div class="text-center mb-8">
+                        <h2 class="heading-font text-4xl font-bold text-stone-100 mb-2">Gear & Packing</h2>
+                        <p class="max-w-3xl mx-auto text-stone-400">Your gear is your home and your lifeline. This section covers the essential equipment for a nomadic life, focusing on durability, versatility, and weight.</p>
+                    </div>
+                    <div id="gear-view" class="flex flex-col lg:flex-row gap-8">
+                        <!-- Gear view populated by JS -->
+                    </div>
+                </section>
+
+                <!-- Sustain Section -->
+                <section id="sustain" class="content-section">
+                    <div class="text-center mb-8">
+                        <h2 class="heading-font text-4xl font-bold text-stone-100 mb-2">Sustain: Income Streams</h2>
+                        <p class="max-w-3xl mx-auto text-stone-400">This section compares income streams to fuel your journey. A resilient financial strategy often involves a mix of these methods.</p>
+                    </div>
+                    <div id="sustain-view" class="flex flex-col lg:flex-row gap-8">
+                        <!-- Sustain view populated by JS -->
+                    </div>
+                </section>
+
+                <!-- Needs Section -->
+                <section id="needs" class="content-section">
+                    <div class="text-center mb-8">
+                        <h2 class="heading-font text-4xl font-bold text-stone-100 mb-2">Sustain: Essential Needs</h2>
+                        <p class="max-w-3xl mx-auto text-stone-400">A guide to securing the non-negotiable pillars of daily survival: food, water, and hygiene.</p>
+                    </div>
+                    <div id="needs-view" class="flex flex-col lg:flex-row gap-8">
+                        <!-- Needs view populated by JS -->
+                    </div>
+                </section>
+
+                <!-- Emergencies Section -->
+                <section id="emergencies" class="content-section">
+                    <div class="text-center mb-8">
+                        <h2 class="heading-font text-4xl font-bold text-stone-100 mb-2">Emergencies: Field Medicine</h2>
+                        <p class="max-w-3xl mx-auto text-stone-400">A guide for handling common medical crises when professional help is not immediately available. This is not a substitute for professional medical advice.</p>
+                    </div>
+                    <div id="emergencies-view" class="flex flex-col lg:flex-row gap-8">
+                        <!-- Emergencies view populated by JS -->
+                    </div>
+                </section>
+
+                <!-- Survive Section -->
+                <section id="survive" class="content-section">
+                    <div class="text-center mb-8">
+                        <h2 class="heading-font text-4xl font-bold mb-2 text-red-500">Survive: Legal & Natural Dangers</h2>
+                        <p class="max-w-3xl mx-auto text-stone-400">This is the most critical section. Understanding the legal and environmental risks is essential for survival.</p>
+                    </div>
+                    <div class="grid lg:grid-cols-1 gap-8 items-start">
+                        <div class="main-card p-6 rounded-lg shadow-lg border-l-4 border-red-500">
+                            <h3 class="heading-font text-2xl mb-3 flex items-center gap-2 text-stone-100">⚖️ The Legal Minefield</h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <h4 class="font-bold text-lg text-red-400">The Post-2024 Reality</h4>
+                                    <p class="text-stone-400">The Supreme Court's *Grants Pass v. Johnson* decision (June 2024) allows cities to legally punish people for sleeping on public property, even without available shelter. This has led to a surge in local anti-camping laws, making urban survival more legally perilous than ever.</p>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-lg text-yellow-500">Punishments: Urban Camping</h4>
+                                    <p class="text-stone-400">Getting caught typically results in a misdemeanor citation. Consequences can include a fine (from $25 to over $1000), a court date you may not be able to make, and confiscation of your gear (your survival equipment). Repeated offenses can lead to arrest and jail time (30-90 days is common). The most damaging consequence is often the criminal record, which can create significant barriers to future employment and housing opportunities.</p>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-lg text-yellow-500">Punishments: Train Hopping</h4>
+                                    <p class="text-stone-400">This is considered trespassing on railroad property, a federal offense. Penalties vary by state and circumstance but typically start with a significant fine (hundreds of dollars) and potential jail time (up to 6 months for a first offense). Railroad police ("bulls") are federal law enforcement officers with broad jurisdiction. They can and will arrest you. Railroad companies can also pursue civil lawsuits for damages.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="main-card p-6 rounded-lg shadow-lg border-l-4 border-yellow-500">
+                            <h3 class="heading-font text-2xl text-stone-100 mb-3 flex items-center gap-2">🐾 Wildlife Encounter Protocols</h3>
+                            <p class="text-stone-400 mb-4">Panic is the enemy. Memorize these immediate actions. Your response in the first 30 seconds is critical.</p>
+                            <div id="wildlife-guide" class="overflow-x-auto">
+                                <!-- Wildlife table populated by JS -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const desktopNav = document.getElementById('desktop-nav');
+        const mobileNavContainer = document.getElementById('mobile-nav');
+        const contentSections = document.querySelectorAll('.content-section');
+
+        desktopNav.querySelectorAll('a').forEach(link => {
+            const mobileLink = document.createElement('a');
+            mobileLink.href = '#';
+            mobileLink.dataset.section = link.dataset.section;
+            mobileLink.className = 'sidebar-nav-item p-3 rounded-md flex-shrink-0 text-center';
+            if (link.classList.contains('active')) { mobileLink.classList.add('active'); }
+            mobileLink.innerHTML = link.querySelector('span:last-child').textContent.substring(0,4);
+            mobileNavContainer.appendChild(mobileLink);
+        });
+
+        const allNavLinks = document.querySelectorAll('.sidebar-nav-item');
+
+        const setActiveSection = (sectionId) => {
+            allNavLinks.forEach(link => { link.classList.toggle('active', link.dataset.section === sectionId); });
+            contentSections.forEach(section => { section.classList.toggle('active', section.id === sectionId); });
+        };
+
+        allNavLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                setActiveSection(link.dataset.section)
+            });
+        });
+
+        // Initializations
+        setActiveSection('ethos');
+        initDayTodaySection();
+        initPlanSection();
+        initWeatherSection();
+        initTransportSection();
+        initShelterSection();
+        initGearSection();
+        initSustainSection();
+        initNeedsSection();
+        initEmergenciesSection();
+        initSurviveSection();
+    });
+
+    // --- GENERIC DETAIL VIEW FUNCTION ---
+    function createDetailView(containerId, data, title) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        let buttonsHTML = '';
+        Object.keys(data).forEach(key => {
+            buttonsHTML += `<button onclick="updateDetailView('${containerId}', '${key}')" class="detail-view-btn text-left p-3 rounded-md border-2 border-neutral-600 w-full heading-font">${data[key].name}</button>`;
+        });
+
+        container.innerHTML = `
+            <div class="lg:w-1/3 main-card p-4 rounded-lg shadow-lg detail-view-list">
+                <h3 class="heading-font text-2xl text-center mb-4">${title}</h3>
+                <div id="${containerId}-buttons" class="flex flex-col space-y-2 detail-view-list-buttons">
+                    ${buttonsHTML}
+                </div>
+            </div>
+            <div id="${containerId}-details" class="lg:w-2/3 main-card p-6 rounded-lg shadow min-h-[400px] overflow-y-auto">
+            </div>
+        `;
+
+        window.updateDetailView(containerId, Object.keys(data)[0]);
+    }
+
+    window.updateDetailView = (containerId, key) => {
+        const dataObjects = {
+            'daytoday-view': dayTodayData,
+            'travel-dossier-view': planData,
+            'weather-view': weatherData,
+            'transport-view': transportDetails,
+            'shelter-view': shelterData,
+            'gear-view': gearData,
+            'sustain-view': earnData,
+            'needs-view': needsData,
+            'emergencies-view': emergenciesData
+        };
+        const data = dataObjects[containerId];
+        const detailsContainer = document.getElementById(`${containerId}-details`);
+        detailsContainer.innerHTML = data[key].details;
+
+        const buttonContainer = document.getElementById(`${containerId}-buttons`);
+        buttonContainer.querySelectorAll('.detail-view-btn').forEach(btn => btn.classList.remove('active'));
+        buttonContainer.querySelector(`[onclick="updateDetailView('${containerId}', '${key}')"]`).classList.add('active');
+    };
+
+    // --- DAY TO DAY SECTION ---
+    const dayTodayData = {
+        wakeup: { name: '0600: Wake Up & Pack', details: '<h3 class="heading-font text-2xl mb-3 text-lime-400">Wake Up & Pack Up</h3><p class="text-stone-300 mb-4">Your day starts before the rest of the world. If stealth camping, you must be packed and gone before sunrise to avoid detection. This is non-negotiable.</p><h4 class="font-bold text-lg text-stone-100">Morning Routine:</h4><ul class="list-disc list-inside space-y-1 text-stone-300 mt-2"><li><strong>Pack everything:</strong> Leave no trace that you were ever there. This is both an ethical principle and a safety tactic.</li><li><strong>Hygiene:</strong> Use wet wipes for a quick "field shower." Brush your teeth. A clean appearance is critical for positive social interactions later in the day.</li><li><strong>Breakfast:</strong> Eat a cold, high-energy breakfast like a protein bar or trail mix. Avoid cooking at your sleep spot to minimize smells and visibility.</li></ul>' },
+        midday: { name: '0900: Mid-Day Operations', details: '<h3 class="heading-font text-2xl mb-3 text-sky-400">Mid-Day Operations</h3><p class="text-stone-300 mb-4">The middle of the day is for logistics, planning, and earning.</p><h4 class="font-bold text-lg text-stone-100">Objective Checklist:</h4><ul class="list-disc list-inside space-y-1 text-stone-300 mt-2"><li><strong>Resupply:</strong> Visit a food pantry or grocery store. Refill all water containers.</li><li><strong>Make Money:</strong> If funds are low, this is the time to work a day labor gig, busk in a high-traffic area, or find a library to work on online tasks.</li><li><strong>Plan Travel:</strong> If on the move, use library WiFi to check maps, weather forecasts, and post on rideshare boards. Charge all electronic devices.</li><li><strong>Hygiene Reset:</strong> If available, use a Planet Fitness or truck stop for a proper shower.</li></ul>' },
+        evening: { name: '1600: Evening Prep', details: '<h3 class="heading-font text-2xl mb-3 text-yellow-500">Evening Preparations</h3><p class="text-stone-300 mb-4">The transition to evening is focused entirely on securing a safe place to sleep. This process must begin well before dark.</p><h4 class="font-bold text-lg text-stone-100">Finding Shelter Protocol:</h4><ul class="list-disc list-inside space-y-1 text-stone-300 mt-2"><li><strong>Start Early:</strong> Begin scouting for a potential sleep spot at least 2-3 hours before sunset. Trying to find a safe, hidden location in the dark is extremely difficult and dangerous.</li><li><strong>Assess the Area:</strong> Look for signs of trouble: broken glass, litter, informal trails that suggest the area is frequently used by others. If your gut tells you a place is unsafe, trust it and move on.</li><li><strong>Cook Away From Camp:</strong> Cook your evening meal in a separate location, like a public park with grills, before heading to your final sleep spot. This prevents cooking smells from attracting animals or unwanted human attention to where you will be vulnerable.</li><li><strong>Final Approach:</strong> Arrive at your chosen spot just after dusk. Set up quickly and quietly. Minimize light and noise. Once you are settled, stay put.</li></ul>' },
+    };
+    function initDayTodaySection() { createDetailView('daytoday-view', dayTodayData, 'DAILY OPS'); }
+
+    // --- TRAVEL (formerly PLAN) SECTION ---
+    const planData = {
+        'jan-feb': { name: 'January - February', details: `<div class="main-card p-4 rounded-lg shadow-lg"><h3 class="heading-font text-2xl text-yellow-500 mb-4 border-b-2 border-neutral-700 pb-2">January - February</h3><div class="grid md:grid-cols-2 gap-6">${generateRegionHTML({ name: 'Desert Southwest', city: 'Tucson, AZ', nature: 'Coronado NF', food: 'Caridad Community Kitchen', water: 'Brandi Fenton Park', work: 'Allied Forces (Agency), Instawork (App)', law: 'Camping banned in city parks/washes. 14-day limit in NF.', weather: 'Flash floods (monsoon season is later, but be aware).', wildlife: 'Rattlesnakes, Scorpions, Mountain Lions.' })}${generateRegionHTML({ name: 'Florida', city: 'Gainesville, FL', nature: 'Ocala NF', food: 'St. Francis House', water: 'Poe Springs Park', work: 'Labor Finders (Agency), Instawork (App)', law: 'Camping banned on public rights-of-way. 14-day limit in NF.', weather: 'Tornado risk (low in winter).', wildlife: 'Alligators, Black Bears, Venomous Snakes.' })}</div><div class="mt-6 pt-4 border-t-2 border-neutral-700"><h4 class="heading-font text-lg mb-2 text-stone-100">OVERALL CONSIDERATIONS:</h4><p class="text-stone-400">Dry heat in SW requires extra water. FL is humid. Peak season for "snowbirds" can strain resources.</p></div></div>` },
+        'mar-apr': { name: 'March - April', details: `<div class="main-card p-4 rounded-lg shadow-lg"><h3 class="heading-font text-2xl text-yellow-500 mb-4 border-b-2 border-neutral-700 pb-2">March - April</h3><div class="grid md:grid-cols-2 gap-6">${generateRegionHTML({ name: 'Southeast', city: 'Asheville, NC', nature: 'Pisgah NF', food: '12 Baskets Cafe', water: 'French Broad River Park', work: 'PeopleReady (Agency), Instawork (App)', law: 'Camping banned on city property. Designated sites in NF.', weather: 'Flash floods, landslides from heavy rain.', wildlife: 'Black Bears, Copperheads, Rattlesnakes.' })}${generateRegionHTML({ name: 'California Desert', city: 'Bishop, CA', nature: 'Inyo NF / Alabama Hills', food: 'IMACA Food Bank', water: 'Bishop Visitor Center (spigot)', work: 'Luttrell Staffing', law: 'Strict 72hr parking limit. 28-day annual limit in Inyo NF.', weather: 'High winds, abrupt temperature changes.', wildlife: 'Black Bears, Mountain Lions.' })}</div><div class="mt-6 pt-4 border-t-2 border-neutral-700"><h4 class="heading-font text-lg mb-2 text-stone-100">OVERALL CONSIDERATIONS:</h4><p class="text-stone-400">Pleasant travel weather. Wildflowers in desert regions. Spring rains are common in the Southeast.</p></div></div>`},
+        'may': { name: 'May', details: `<div class="main-card p-4 rounded-lg shadow-lg"><h3 class="heading-font text-2xl text-yellow-500 mb-4 border-b-2 border-neutral-700 pb-2">May</h3><div class="grid md:grid-cols-2 gap-6">${generateRegionHTML({ name: 'Mid-Atlantic', city: 'Richmond, VA', nature: 'George Washington & Jefferson NFs', food: 'CAPUP North Food Pantry', water: 'City parks', work: 'Labor Finders (Agency), Instawork (App)', law: '4hr vehicle sleeping limit. 14-day limit in NFs.', weather: 'Thunderstorms, potential for tornados.', wildlife: 'Black Bears, Copperheads.' })}${generateRegionHTML({ name: 'Northern California Coast', city: 'Arcata, CA', nature: 'Six Rivers NF', food: 'Arcata Food Pantry', water: 'City parks', work: 'Dark Staffing', law: 'Camping banned in parks. 72hr parking limit enforced.', weather: 'Wildfire risk begins. Dense fog.', wildlife: 'Black Bears, Mountain Lions.' })}</div><div class="mt-6 pt-4 border-t-2 border-neutral-700"><h4 class="heading-font text-lg mb-2 text-stone-100">OVERALL CONSIDERATIONS:</h4><p class="text-stone-400">Ideal temperatures nationwide. Good time for cross-country travel before summer heat sets in.</p></div></div>`},
+        'jun-aug': { name: 'June - August', details: `<div class="main-card p-4 rounded-lg shadow-lg"><h3 class="heading-font text-2xl text-yellow-500 mb-4 border-b-2 border-neutral-700 pb-2">June - August</h3><div class="grid md:grid-cols-2 gap-6">${generateRegionHTML({ name: 'Pacific Northwest', city: 'Bend, OR', nature: 'Deschutes NF', food: 'Family Kitchen', water: 'City parks', work: 'PeopleReady (Agency)', law: 'Complex rules; must move camp 600ft every 24h.', weather: 'High wildfire risk.', wildlife: 'Black Bears, Mountain Lions.' })}${generateRegionHTML({ name: 'Northeast', city: 'Burlington, VT', nature: 'Green Mountain NF', food: 'Chittenden Food Shelf', water: 'Lake Champlain waterfront', work: 'VT Dept. of Labor', law: '48hr vehicle permit required. Bear canisters in NF.', weather: 'Severe thunderstorms.', wildlife: 'Black Bears, Moose (can be aggressive).' })}</div><div class="mt-6 pt-4 border-t-2 border-neutral-700"><h4 class="heading-font text-lg mb-2 text-stone-100">OVERALL CONSIDERATIONS:</h4><p class="text-stone-400">Escape the heat. Be prepared for rain in PNW/NE. High elevation means cool nights and strong sun.</p></div></div>`},
+        'sep-oct': { name: 'September - October', details: `<div class="main-card p-4 rounded-lg shadow-lg"><h3 class="heading-font text-2xl text-yellow-500 mb-4 border-b-2 border-neutral-700 pb-2">September - October</h3><div class="grid md:grid-cols-2 gap-6">${generateRegionHTML({ name: 'Rocky Mountains', city: 'Boise, ID', nature: 'Boise NF', food: 'Local food banks', water: 'City parks', work: 'Local agencies', law: 'Check local ordinances; varies widely.', weather: 'Early snow/blizzards possible at high elevations.', wildlife: 'Grizzly Bears (further north), Black Bears, Mountain Lions.' })}${generateRegionHTML({ name: 'Southern Appalachians', city: 'Johnson City, TN', nature: 'Cherokee NF', food: 'Local food pantries', water: 'City parks', work: 'Local agencies', law: 'Generally restrictive; check local codes.', weather: 'Remnants of hurricanes can cause flooding.', wildlife: 'Black Bears, Rattlesnakes.' })}</div><div class="mt-6 pt-4 border-t-2 border-neutral-700"><h4 class="heading-font text-lg mb-2 text-stone-100">OVERALL CONSIDERATIONS:</h4><p class="text-stone-400">Excellent travel weather, fall foliage. Tourist crowds diminish. Prepare for early cold snaps.</p></div></div>`},
+        'nov-dec': { name: 'November - December', details: `<div class="main-card p-4 rounded-lg shadow-lg"><h3 class="heading-font text-2xl text-yellow-500 mb-4 border-b-2 border-neutral-700 pb-2">November - December</h3><div class="grid md:grid-cols-2 gap-6">${generateRegionHTML({ name: 'Gulf Coast', city: 'St. Petersburg, FL', nature: 'Apalachicola NF', food: 'Local food banks', water: 'Public beaches/parks', work: 'Local agencies', law: 'Varies by city; many have anti-camping laws.', weather: 'End of hurricane season (low risk).', wildlife: 'Alligators, Venomous Snakes.' })}${generateRegionHTML({ name: 'New Mexico Desert', city: 'Las Cruces, NM', nature: 'Organ Mountains-Desert Peaks NM', food: 'El Caldito Soup Kitchen', water: 'City parks', work: 'Red Cap Staffing', law: 'Vehicle habitation banned in city limits.', weather: 'Haboobs (dust storms), cold nights.', wildlife: 'Mountain Lions, Rattlesnakes.' })}</div><div class="mt-6 pt-4 border-t-2 border-neutral-700"><h4 class="heading-font text-lg mb-2 text-stone-100">OVERALL CONSIDERATIONS:</h4><p class="text-stone-400">Arrive in winter sanctuary ahead of deep cold. Prepare for holiday closures. NM is colder at night than FL.</p></div></div>`}
+    };
+    function initPlanSection() { createDetailView('travel-dossier-view', planData, 'SEASONS'); }
+
+    function generateRegionHTML(regionData) {
+        return `
+            <div class="bg-neutral-900 p-4 rounded-lg border-2 border-neutral-700 h-full flex flex-col">
+                <h4 class="heading-font text-xl text-lime-400 mb-3 text-center border-b border-neutral-700 pb-2">${regionData.name}</h4>
+                <div class="text-base space-y-4 text-neutral-300 flex-grow">
+                    <div>
+                        <h5 class="font-bold text-neutral-100 mb-2 text-yellow-500">FIELD INTEL:</h5>
+                        <ul class="space-y-1 pl-2 text-sm">
+                            <li><strong>🏙️ Hub:</strong> ${regionData.city}</li>
+                            <li><strong>🌲 Base:</strong> ${regionData.nature}</li>
+                            <li><strong>🍲 Food:</strong> ${regionData.food}</li>
+                            <li><strong>💧 Water:</strong> ${regionData.water}</li>
+                            <li><strong>💰 Work:</strong> ${regionData.work}</li>
+                        </ul>
+                    </div>
+                    <div class="pt-3 mt-3 border-t border-neutral-700">
+                        <h5 class="font-bold text-neutral-100 mb-2 text-yellow-500">LEGAL STATUS:</h5>
+                        <p class="pl-2 text-sm">${regionData.law}</p>
+                    </div>
+                    <div class="pt-3 mt-3 border-t border-neutral-700">
+                        <h5 class="font-bold text-neutral-100 mb-2 text-yellow-500">THREAT ASSESSMENT:</h5>
+                        <p class="pl-2 text-sm"><strong>☀️ Weather:</strong> ${regionData.weather}</p>
+                        <p class="pl-2 text-sm"><strong>🐾 Wildlife:</strong> ${regionData.wildlife}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // --- WEATHER SECTION ---
+    const weatherData = {
+        'jan-feb': { name: 'January - February', details: `<div class="main-card p-4 sm:p-6 rounded-lg shadow-lg overflow-x-auto"><table class="w-full text-sm text-left"><thead class="bg-neutral-700"><tr><th class="p-3 font-semibold heading-font text-lg">Region</th><th class="p-3 font-semibold heading-font text-lg">Avg. Temp</th><th class="p-3 font-semibold heading-font text-lg">Risks & Notes</th></tr></thead><tbody class="divide-y divide-neutral-700"><tr class="align-top"><td class="p-3 text-lime-400 font-bold">🌵 Desert SW</td><td class="p-3">65/45°F</td><td><span class="font-semibold text-sky-400">Significant nightly temperature drops.</span><br><span class="text-sm text-stone-400">Clear days are common, but be prepared for freezing nights.</span></td></tr><tr class="align-top"><td class="p-3 text-lime-400 font-bold">🌴 Florida</td><td class="p-3">70/55°F</td><td><span class="font-semibold text-blue-500">Lingering tropical storm risk, high humidity.</span><br><span class="text-sm text-stone-400">Fog can be dense in the mornings. Less crowded than peak tourist season.</span></td></tr></tbody></table><div class="mt-4 text-xs text-center text-stone-400">Check hyper-local conditions:<br><a href="https://web.weatherwise.app" target="_blank" class="text-sky-400 hover:underline">WeatherWise Radar</a> | <a href="https://www.accuweather.com/" target="_blank" class="text-sky-400 hover:underline">AccuWeather Forecast</a></div></div>`},
+        'mar-apr': { name: 'March - April', details: `<div class="main-card p-4 sm:p-6 rounded-lg shadow-lg overflow-x-auto"><table class="w-full text-sm text-left"><thead class="bg-neutral-700"><tr><th class="p-3 font-semibold heading-font text-lg">Region</th><th class="p-3 font-semibold heading-font text-lg">Avg. Temp</th><th class="p-3 font-semibold heading-font text-lg">Risks & Notes</th></tr></thead><tbody class="divide-y divide-neutral-700"><tr class="align-top"><td class="p-3 text-lime-400 font-bold">⛰️ Southeast</td><td class="p-3">70/50°F</td><td><span class="font-semibold text-yellow-400">Peak tornado season, severe thunderstorms.</span><br><span class="text-sm text-stone-400">Pollen counts can be extremely high. Weather changes rapidly in the mountains.</span></td></tr><tr class="align-top"><td class="p-3 text-lime-400 font-bold">🏜️ CA Desert</td><td class="p-3">80/55°F</td><td><span class="font-semibold text-yellow-400">High winds and dust storms (haboobs).</span><br><span class="text-sm text-stone-400">Perfect temperatures for a few weeks before the unbearable summer heat arrives.</span></td></tr></tbody></table><div class="mt-4 text-xs text-center text-stone-400">Check hyper-local conditions:<br><a href="https://web.weatherwise.app" target="_blank" class="text-sky-400 hover:underline">WeatherWise Radar</a> | <a href="https://www.accuweather.com/" target="_blank" class="text-sky-400 hover:underline">AccuWeather Forecast</a></div></div>`},
+        'may': { name: 'May', details: `<div class="main-card p-4 sm:p-6 rounded-lg shadow-lg overflow-x-auto"><table class="w-full text-sm text-left"><thead class="bg-neutral-700"><tr><th class="p-3 font-semibold heading-font text-lg">Region</th><th class="p-3 font-semibold heading-font text-lg">Avg. Temp</th><th class="p-3 font-semibold heading-font text-lg">Risks & Notes</th></tr></thead><tbody class="divide-y divide-neutral-700"><tr class="align-top"><td class="p-3 text-lime-400 font-bold">🌊 Mid-Atlantic</td><td class="p-3">75/55°F</td><td><span class="font-semibold text-yellow-400">Severe thunderstorms, increasing humidity.</span><br><span class="text-sm text-stone-400">A good 'shoulder season' month with pleasant temperatures before summer.</span></td></tr><tr class="align-top"><td class="p-3 text-lime-400 font-bold">🌲 NorCal Coast</td><td class="p-3">65/50°F</td><td><span class="font-semibold text-red-500">Wildfire season begins, dense coastal fog.</span><br><span class="text-sm text-stone-400">'May Gray/June Gloom' pattern means overcast skies are common.</span></td></tr></tbody></table><div class="mt-4 text-xs text-center text-stone-400">Check hyper-local conditions:<br><a href="https://web.weatherwise.app" target="_blank" class="text-sky-400 hover:underline">WeatherWise Radar</a> | <a href="https://www.accuweather.com/" target="_blank" class="text-sky-400 hover:underline">AccuWeather Forecast</a></div></div>`},
+        'jun-aug': { name: 'June - August', details: `<div class="main-card p-4 sm:p-6 rounded-lg shadow-lg overflow-x-auto"><table class="w-full text-sm text-left"><thead class="bg-neutral-700"><tr><th class="p-3 font-semibold heading-font text-lg">Region</th><th class="p-3 font-semibold heading-font text-lg">Avg. Temp</th><th class="p-3 font-semibold heading-font text-lg">Risks & Notes</th></tr></thead><tbody class="divide-y divide-neutral-700"><tr class="align-top"><td class="p-3 text-lime-400 font-bold">🌲 Pacific NW</td><td class="p-3">80/55°F</td><td><span class="font-semibold text-red-500">High wildfire risk, air quality issues from smoke.</span><br><span class="text-sm text-stone-400">Generally dry and pleasant, but smoke can ruin plans for weeks at a time.</span></td></tr><tr class="align-top"><td class="p-3 text-lime-400 font-bold">🍁 Northeast</td><td class="p-3">80/65°F</td><td><span class="font-semibold text-yellow-400">Severe thunderstorms, high humidity.</span><br><span class="text-sm text-stone-400">Black fly season can be intense in early summer.</span></td></tr></tbody></table><div class="mt-4 text-xs text-center text-stone-400">Check hyper-local conditions:<br><a href="https://web.weatherwise.app" target="_blank" class="text-sky-400 hover:underline">WeatherWise Radar</a> | <a href="https://www.accuweather.com/" target="_blank" class="text-sky-400 hover:underline">AccuWeather Forecast</a></div></div>`},
+        'sep-oct': { name: 'September - October', details: `<div class="main-card p-4 sm:p-6 rounded-lg shadow-lg overflow-x-auto"><table class="w-full text-sm text-left"><thead class="bg-neutral-700"><tr><th class="p-3 font-semibold heading-font text-lg">Region</th><th class="p-3 font-semibold heading-font text-lg">Avg. Temp</th><th class="p-3 font-semibold heading-font text-lg">Risks & Notes</th></tr></thead><tbody class="divide-y divide-neutral-700"><tr class="align-top"><td class="p-3 text-lime-400 font-bold">🏔️ Rockies</td><td class="p-3">65/40°F</td><td><span class="font-semibold text-sky-400">Early, unpredictable blizzards at high elevation.</span><br><span class="text-sm text-stone-400">Golden aspens make for beautiful scenery, but winter comes fast.</span></td></tr><tr class="align-top"><td class="p-3 text-lime-400 font-bold">🍂 S. Appalachia</td><td class="p-3">70/50°F</td><td><span class="font-semibold text-blue-500">Remnants of late-season hurricanes, flooding.</span><br><span class="text-sm text-stone-400">Fall foliage season is peak tourist time, can be crowded.</span></td></tr></tbody></table><div class="mt-4 text-xs text-center text-stone-400">Check hyper-local conditions:<br><a href="https://web.weatherwise.app" target="_blank" class="text-sky-400 hover:underline">WeatherWise Radar</a> | <a href="https://www.accuweather.com/" target="_blank" class="text-sky-400 hover:underline">AccuWeather Forecast</a></div></div>`},
+        'nov-dec': { name: 'November - December', details: `<div class="main-card p-4 sm:p-6 rounded-lg shadow-lg overflow-x-auto"><table class="w-full text-sm text-left"><thead class="bg-neutral-700"><tr><th class="p-3 font-semibold heading-font text-lg">Region</th><th class="p-3 font-semibold heading-font text-lg">Avg. Temp</th><th class="p-3 font-semibold heading-font text-lg">Risks & Notes</th></tr></thead><tbody class="divide-y divide-neutral-700"><tr class="align-top"><td class="p-3 text-lime-400 font-bold">🐊 Gulf Coast</td><td class="p-3">70/55°F</td><td><span class="font-semibold text-blue-500">End of hurricane season, but still possible.</span><br><span class="text-sm text-stone-400">Pleasant temperatures, but many services may have reduced 'off-season' hours.</span></td></tr><tr class="align-top"><td class="p-3 text-lime-400 font-bold">🌶️ NM Desert</td><td class="p-3">60/35°F</td><td><span class="font-semibold text-sky-400">Drastic temperature drops at night, high winds.</span><br><span class="text-sm text-stone-400">Very dry air. Excellent stargazing opportunities due to low humidity.</span></td></tr></tbody></table><div class="mt-4 text-xs text-center text-stone-400">Check hyper-local conditions:<br><a href="https://web.weatherwise.app" target="_blank" class="text-sky-400 hover:underline">WeatherWise Radar</a> | <a href="https://www.accuweather.com/" target="_blank" class="text-sky-400 hover:underline">AccuWeather Forecast</a></div></div>`}
+    };
+    function initWeatherSection() { createDetailView('weather-view', weatherData, 'CLIMATE'); }
+
+    // --- TRANSPORT SECTION ---
+    const transportDetails = {
+        hitchhike: { name: 'Hitchhiking', details: `<h3 class="heading-font text-2xl mb-3 text-orange-500">Hitchhiking</h3><div class="space-y-2 mb-6 border-b-2 border-neutral-700 pb-4 text-sm"><div class="flex justify-between items-center"><span class="font-bold">Low Cost:</span><span class="text-yellow-500">■■■■■</span></div><div class="flex justify-between items-center"><span class="font-bold">High Speed:</span><span class="text-yellow-500">■■■□□</span></div><div class="flex justify-between items-center"><span class="font-bold">Low Physicality:</span><span class="text-yellow-500">■■■■■</span></div><div class="flex justify-between items-center"><span class="font-bold">Low Legal Risk:</span><span class="text-yellow-500">■■■□□</span></div><div class="flex justify-between items-center"><span class="font-bold">Low Physical Risk:</span><span class="text-yellow-500">■■■□□</span></div></div><p class="text-stone-400 mb-2">An art of social engineering. Success depends on projecting safety and friendliness. The key is to make it easy for drivers to say yes.</p><ul class="list-disc list-inside space-y-1 text-stone-300"><li><strong>Presentation:</strong> Be clean. Smile. Make eye contact. Let them see your backpack to identify you as a traveler.</li><li><strong>Location:</strong> Choose a spot where cars are slow and can pull over safely (on-ramps, gas stations).</li><li><strong>Safety:</strong> <strong class="text-red-500">TRUST YOUR GUT.</strong> You do not have to accept any ride. Decline if it feels wrong.</li></ul>` },
+        train: { name: 'Train Hopping', details: `<h3 class="heading-font text-2xl mb-3 text-red-500">CRITICAL: Train Hopping</h3><div class="space-y-2 mb-6 border-b-2 border-neutral-700 pb-4 text-sm"><div class="flex justify-between items-center"><span class="font-bold">Low Cost:</span><span class="text-yellow-500">■■■■■</span></div><div class="flex justify-between items-center"><span class="font-bold">High Speed:</span><span class="text-yellow-500">■■■■□</span></div><div class="flex justify-between items-center"><span class="font-bold">Low Physicality:</span><span class="text-yellow-500">■■■■□</span></div><div class="flex justify-between items-center"><span class="font-bold">Low Legal Risk:</span><span class="text-yellow-500">■□□□□</span></div><div class="flex justify-between items-center"><span class="font-bold">Low Physical Risk:</span><span class="text-yellow-500">■□□□□</span></div></div><p class="text-stone-400 mb-2">This is exceptionally dangerous and illegal. It is <strong>NOT recommended</strong>. The romantic myth hides a brutal reality of dismemberment, death, and arrest.</p><ul class="list-disc list-inside space-y-1 text-stone-300"><li><strong>Key Dangers:</strong> "Slack action" can throw you from the car or crush you. Shifting loads can be fatal. Falls under the wheels are common.</li><li><strong>Legal:</strong> Federal offense. Will lead to arrest.</li><li><strong>Harm Reduction:</strong> NEVER get on/off a moving train. Stay off roofs. Be sober. Understand you are risking your life.</li></ul>` },
+        cycle: { name: 'Cycling', details: `<h3 class="heading-font text-2xl mb-3 text-green-500">Long-Distance Cycling</h3><div class="space-y-2 mb-6 border-b-2 border-neutral-700 pb-4 text-sm"><div class="flex justify-between items-center"><span class="font-bold">Low Cost:</span><span class="text-yellow-500">■■■■□</span></div><div class="flex justify-between items-center"><span class="font-bold">High Speed:</span><span class="text-yellow-500">■■□□□</span></div><div class="flex justify-between items-center"><span class="font-bold">Low Physicality:</span><span class="text-yellow-500">■□□□□</span></div><div class="flex justify-between items-center"><span class="font-bold">Low Legal Risk:</span><span class="text-yellow-500">■■■■■</span></div><div class="flex justify-between items-center"><span class="font-bold">Low Physical Risk:</span><span class="text-yellow-500">■■■□□</span></div></div><p class="text-stone-400 mb-2">Offers great autonomy but is a serious endurance sport requiring preparation and smart navigation.</p><ul class="list-disc list-inside space-y-2 text-stone-300"><li><strong>Navigation Strategy:</strong> Like walking, cycling on most interstates is prohibited. Use Google Maps in "Bicycling" mode or dedicated cycling apps like Komoot or Ride with GPS to find routes using bike-friendly roads and trails. State-issued bicycle maps can be invaluable backups.</li><li><strong>Bike Fit & Gear:</strong> A professional bike fit is crucial to prevent repetitive stress injuries. Padded shorts, a comfortable saddle, and a full repair kit are non-negotiable.</li><li><strong>On the Road:</strong> Pace yourself to avoid "bonking." Eat before you're hungry, drink before you're thirsty. A steady, conversational pace is key for endurance.</li></ul>` },
+        walk: { name: 'Walking', details: `<h3 class="heading-font text-2xl mb-3 text-sky-400">Long-Distance Walking</h3><div class="space-y-2 mb-6 border-b-2 border-neutral-700 pb-4 text-sm"><div class="flex justify-between items-center"><span class="font-bold">Low Cost:</span><span class="text-yellow-500">■■■■■</span></div><div class="flex justify-between items-center"><span class="font-bold">High Speed:</span><span class="text-yellow-500">■□□□□</span></div><div class="flex justify-between items-center"><span class="font-bold">Low Physicality:</span><span class="text-yellow-500">■□□□□</span></div><div class="flex justify-between items-center"><span class="font-bold">Low Legal Risk:</span><span class="text-yellow-500">■■■■■</span></div><div class="flex justify-between items-center"><span class="font-bold">Low Physical Risk:</span><span class="text-yellow-500">■■□□□</span></div></div><p class="text-stone-400 mb-2">The most intimate way to see the world, but it's an endurance sport requiring careful navigation.</p><ul class="list-disc list-inside space-y-2 text-stone-300"><li><strong>Navigation Strategy:</strong> Walking on interstate highways is illegal and dangerous. Your route must utilize secondary roads. Use mapping apps like Google Maps in "Walking" mode to generate safe routes. Use the "Measure Distance" feature to accurately plan daily mileage. Always have a physical backup map, like state road maps from a DOT or AAA, as digital tools can fail.</li><li><strong>Foot Care:</strong> This is your #1 priority. Prevent blisters by using quality wool socks and well-fitting shoes. Address "hot spots" immediately before they become blisters.</li><li><strong>Pacing:</strong> A sustainable pace is 2-3 mph. Plan for 10-15 miles per day to avoid burnout and injury, especially when carrying a pack.</li></ul>` },
+        carpool: { name: 'Carpool Apps', details: `<h3 class="heading-font text-2xl mb-3 text-violet-500">Carpooling Apps</h3><div class="space-y-2 mb-6 border-b-2 border-neutral-700 pb-4 text-sm"><div class="flex justify-between items-center"><span class="font-bold">Low Cost:</span><span class="text-yellow-500">■■■■□</span></div><div class="flex justify-between items-center"><span class="font-bold">High Speed:</span><span class="text-yellow-500">■■■■□</span></div><div class="flex justify-between items-center"><span class="font-bold">Low Physicality:</span><span class="text-yellow-500">■■■■■</span></div><div class="flex justify-between items-center"><span class="font-bold">Low Legal Risk:</span><span class="text-yellow-500">■■■■■</span></div><div class="flex justify-between items-center"><span class="font-bold">Low Physical Risk:</span><span class="text-yellow-500">■■■■■</span></div></div><p class="text-stone-400 mb-2">A modern, low-risk, and predictable alternative to hitchhiking. Connects drivers with riders on a cost-sharing basis.</p><ul class="list-disc list-inside space-y-1 text-stone-300"><li><strong>Platforms:</strong> BlaBlaCar, Hitch, Hovr, Ridesharing.com.</li><li><strong>Benefits:</strong> Safer, more predictable, and social. Built on a system of reviews and trust.</li><li><strong>Cost:</strong> Low cost, not free. You contribute to fuel/tolls. Often cheaper than a bus.</li></ul>` },
+    };
+    function initTransportSection() { createDetailView('transport-view', transportDetails, 'METHODS'); }
+
+    // --- SHELTER SECTION ---
+    const shelterData = {
+        blm: { name: 'Dispersed Camping', details: '<h3 class="heading-font text-2xl mb-3 text-green-500">🌲 BLM Dispersed Camping</h3><p class="text-stone-300">Legal, free camping on public lands, mainly in the West. Requires self-sufficiency and strict adherence to Leave No Trace principles. Use apps like FreeRoam or iOverlander to find spots. The primary rule is a 14-day stay limit in any single location, after which you must move a designated distance (often several miles).</p>' },
+        stateParks: { name: 'State/County Parks', details: '<h3 class="heading-font text-2xl mb-3 text-green-500">🏞️ State/County Parks</h3><p class="text-stone-300">The best budget-friendly alternative to free camping. Often cheaper ($15-35/night) and less crowded than National Parks or commercial options like KOA. They usually provide a basic site with a fire ring, picnic table, and access to water and restrooms. Reservations are highly recommended and can be made through each state\'s respective parks website.</p>' },
+        membership: { name: 'Membership Networks', details: '<h3 class="heading-font text-2xl mb-3 text-sky-400">💳 Membership Networks</h3><p class="text-stone-300">For full-time travelers, these can be cost-effective. <strong class="text-yellow-400">Thousand Trails</strong> offers a "Camping Pass" (~$600/yr) for no-fee stays at their RV resorts (with stay limits). <strong class="text-yellow-400">Harvest Hosts</strong> (~$99/yr) allows self-contained vehicles to stay at wineries and farms, with the expectation of a small purchase.</p>' },
+        stealth: { name: 'Urban Stealth (Vehicle)', details: '<h3 class="heading-font text-2xl mb-3 text-red-500">🚐 Urban Stealth Camping</h3><p class="text-stone-300">Sleeping in a vehicle without being noticed. Now a VERY high-risk strategy due to new laws. Requires a nondescript vehicle and moving spots nightly. Arrive late, leave early. The risk of a police encounter and a citation is high in most cities.</p>' },
+        bivouac: { name: 'Bivouac (No Vehicle)', details: '<h3 class="heading-font text-2xl mb-3 text-red-500">⛺ Bivouac (No Vehicle)</h3><p class="text-stone-300">Sleeping without a vehicle in hidden urban spaces. EXTREMELY high risk of arrest under new anti-camping laws. Requires leaving no trace and being gone before sunrise. Use satellite maps to scout locations during the day—look for dense vegetation near creeks, wooded islands of interstate on-ramps, or deep in industrial parks. Set up only after dark and be packed before dawn. This is a last resort tactic.</p>' },
+        emergency: { name: 'Emergency Shelter', details: '<h3 class="heading-font text-2xl mb-3 text-red-500">🏥 Emergency Shelter</h3><p class="text-stone-300">In a true emergency, such as a blizzard or other dangerous weather, a hospital emergency room waiting area can be a life-saving temporary shelter. Be quiet, respectful, and do not draw attention to yourself. This is a place of last resort for a few hours of warmth and safety, not a regular camping spot.</p>' },
+        hospEx: { name: 'Hospitality Exchange', details: '<h3 class="heading-font text-2xl mb-3 text-sky-400">🛋️ Hospitality Exchange</h3><p class="text-stone-300">Connecting with hosts for a free place to stay. Built on trust and reputation. Requires a good profile and social skills. Provides a safe roof and a chance for local connection. Platforms include BeWelcome, Trustroots, and Warmshowers for cyclists.</p>' },
+        workEx: { name: 'Work Exchange', details: '<h3 class="heading-font text-2xl mb-3 text-sky-400">🧑‍🌾 Work Exchange</h3><p class="text-stone-300">Trading a few hours of labor per day for room and board on farms, hostels, or with families. A good way to stay in one place longer, learn skills, and save money. Platforms like WWOOF, Workaway, and HelpX connect travelers with hosts.</p>' }
+    };
+    function initShelterSection() { createDetailView('shelter-view', shelterData, 'SHELTER'); }
+
+    // --- GEAR SECTION ---
+    const gearData = {
+        rucksack: { name: "The Rucksack", details: '<h3 class="heading-font text-2xl mb-3 text-lime-400">🎒 The Rucksack</h3><p class="text-stone-300 mb-4">This is your home on your back. Durability and fit are paramount. A cheap pack will fail at the worst possible time. Invest in a quality internal-frame pack from a reputable brand (e.g., Osprey, Gregory, Deuter).</p><h4 class="font-bold text-lg text-stone-100">Key Features:</h4><ul class="list-disc list-inside space-y-1 text-stone-300 mt-2"><li><strong>Capacity:</strong> 50-65 liters is the sweet spot for long-term travel, balancing space with the discipline to not overpack.</li><li><strong>Fit:</strong> Get properly fitted at an outdoor store. The pack\'s weight should rest on your hips, not your shoulders. An ill-fitting pack will cause pain and injury.</li><li><strong>Rain Cover:</strong> A built-in or separate rain cover is non-negotiable for protecting your gear.</li></ul>' },
+        sleep: { name: "The Sleep System", details: '<h3 class="heading-font text-2xl mb-3 text-lime-400">🛌 The Sleep System</h3><p class="text-stone-300 mb-4">A good night\'s sleep is critical for physical and mental health. Your sleep system consists of two key components.</p><h4 class="font-bold text-lg text-stone-100">Sleeping Bag</h4><p class="text-stone-300 mt-2">A <strong>20°F (-6°C) rated bag</strong> is the most versatile choice for three-season vagabonding. It will be comfortable for most nights from spring through fall. Down is lighter and more compressible, but synthetic insulation retains warmth better when wet.</p><h4 class="font-bold text-lg text-stone-100 mt-4">Sleeping Pad</h4><p class="text-stone-300 mt-2">A sleeping pad\'s primary job is insulation from the cold ground, not just comfort. Look for the R-value, which measures insulation. An R-value of 2-4 is suitable for three-season use. Inflatable pads are comfortable and pack small; closed-cell foam pads are cheaper and indestructible.</p>' },
+        pantry: { name: "The Pantry", details: '<h3 class="heading-font text-2xl mb-3 text-lime-400">🥫 The Road Pantry</h3><p class="text-stone-300 mb-4">Your food strategy should revolve around cheap, non-perishable, calorie-dense foods that require minimal cooking.</p><h4 class="font-bold text-lg text-stone-100">Shopping List Staples:</h4><ul class="list-disc list-inside space-y-1 text-stone-300 mt-2"><li><strong>Oats:</strong> Lightweight, cheap, and a great source of slow-release energy for breakfast.</li><li><strong>Peanut Butter:</strong> An excellent source of calories, fat, and protein.</li><li><strong>Tortillas:</strong> More durable and packable than bread. A vehicle for peanut butter, beans, or anything else.</li><li><strong>Instant Rice/Noodles:</strong> The foundation for a quick, hot meal.</li><li><strong>Canned Fish:</strong> Tuna, salmon, or sardines in oil are packed with protein and healthy fats.</li><li><strong>Dried Fruit, Nuts, Seeds:</strong> The core of any good trail mix for high-energy snacking on the move.</li><li><strong>Hard Cheeses & Salami:</strong> If you can eat them within a day or two, these provide a major morale and calorie boost.</li></ul>' },
+        tools: { name: "Essential Tools", details: '<h3 class="heading-font text-2xl mb-3 text-lime-400">🛠️ Essential Tools</h3><p class="text-stone-300 mb-4">Beyond the basics, a few key tools can dramatically increase your safety and self-reliance.</p><ul class="list-disc list-inside space-y-4 text-stone-300 mt-2"><li><strong>Fire Starter:</strong> Redundancy is key. Carry at least two types, such as a disposable lighter and a ferrocerium rod. The ability to make fire is a critical survival skill for warmth, cooking, and signaling.</li><li><strong>Pepper Spray:</strong> A powerful, non-lethal self-defense tool for protection against both human and animal threats. Check local laws regarding canister size and legality.</li><li><strong>Binoculars:</strong> A lightweight pair of binoculars is invaluable for scouting. Use them to assess potential campsites from a distance, check for signs of other people, or identify potential water sources without wasting energy hiking to them.</li><li><strong>Multi-Tool:</strong> A quality multi-tool (e.g., Leatherman, Gerber) is a portable toolbox. The pliers, knife, and screwdrivers are essential for gear repair and countless other small tasks.</li><li><strong>Headlamp:</strong> A hands-free light source is non-negotiable. Choose a durable, water-resistant model with a red-light setting to preserve night vision.</li><li><strong>Duct Tape:</strong> Its uses are legendary and limitless. Wrap a few feet around your water bottle or trekking pole for an easily accessible supply for gear repair.</li><li><strong>Geiger Counter:</strong> While a niche item, a small Geiger counter can provide peace of mind and critical safety data if traveling near nuclear power plants, military bases, or known waste sites. It allows you to check an area for abnormal radiation levels before settling in.</li></ul>'}
+    };
+    function initGearSection() { createDetailView('gear-view', gearData, 'GEAR'); }
+
+    // --- SUSTAIN SECTION (INCOME) ---
+    const earnData = {
+        apps: { name: 'Day Labor Apps', details: '<h3 class="heading-font text-2xl mb-3 text-yellow-400">Day Labor Apps</h3><p class="text-stone-300 mb-4">Apps like Instawork, Wonolo, and Bluecrew connect workers with on-demand shifts in warehousing, hospitality, and general labor. The work often involves packing boxes, washing dishes, or event setup/teardown.</p><p class="text-stone-300"><strong class="text-red-500">CRITICAL WARNING:</strong> Use these with extreme caution. They offer quick cash but are notoriously unreliable. Expect last-minute cancellations, payment "glitches" where you are marked as a no-show, and non-existent support. <strong>Never</strong> rely on this as a sole income source. Treat it as a tool for a quick cash infusion, but always have a backup plan.</p>'},
+        busking: { name: 'Busking', details: '<h3 class="heading-font text-2xl mb-3 text-lime-400">Busking</h3><p class="text-stone-300 mb-4">Requires performance skill and knowledge of local laws. Many cities require permits. High foot-traffic areas are best. An engaging act is key to profitability.</p><h4 class="font-bold text-lg text-stone-100">Setup & Etiquette</h4><ul class="list-disc list-inside space-y-1 text-stone-300 mt-2"><li>Choose a spot that does not obstruct pedestrian flow or storefronts.</li><li>Keep volume at a reasonable level; you want to attract attention, not complaints.</li><li>Have a clear, open instrument case or box for tips. A small sign saying "Thank You" or similar is helpful.</li><li>Be gracious. Thank every person who donates, no matter the amount.</li></ul>'},
+        crafts: { name: 'Selling Crafts', details: '<h3 class="heading-font text-2xl mb-3 text-lime-400">Selling Crafts</h3><p class="text-stone-300 mb-4">Requires a craft and navigating bureaucracy. You will likely need state/local business licenses and vendor permits. Research city hall rules first.</p><h4 class="font-bold text-lg text-stone-100">What to Make</h4><ul class="list-disc list-inside space-y-1 text-stone-300 mt-2"><li><strong>Crocheting:</strong> Extremely portable (yarn, one hook). Small, quick items like beanies, hacky sacks, or small bags are ideal.</li><li><strong>Friendship Bracelets:</strong> Embroidery floss is cheap and lightweight. Complex patterns can fetch a good price.</li><li><strong>Wire-Wrapped Stones:</strong> Requires only a spool of wire, a pair of pliers, and stones you can find for free.</li></ul><h4 class="font-bold text-lg text-stone-100 mt-4">How to Sell</h4><ul class="list-disc list-inside space-y-1 text-stone-300 mt-2"><li>Set up a small blanket in a high-traffic public area (check laws first).</li><li>Visit farmers markets or local festivals and ask organizers if you can set up a small space.</li><li>If you have a mailing address, sell online via Etsy.</li></ul>'},
+        seasonal: { name: 'Seasonal Work', details: '<h3 class="heading-font text-2xl mb-3 text-lime-400">Seasonal Work</h3><p class="text-stone-300">This involves following economic cycles for temporary, intensive labor. It is physically demanding but can be a reliable source of income for a defined period. The key is to plan your travels to arrive just before the season starts.</p><h4 class="font-bold text-lg text-stone-100 mt-4">Field Intel:</h4><ul class="list-disc list-inside space-y-2 text-stone-300 mt-2"><li><strong>The Beet Harvest:</strong> A major circuit in the northern plains (ND, MN, MT) from roughly late September to early November. It involves long hours and hard physical labor but offers high pay with potential for overtime and completion bonuses.</li><li><strong>Fish Processing (Alaska):</strong> From roughly June to September, canneries in Alaska hire thousands of workers for the salmon season. The work is grueling (long hours, cold, wet, repetitive) but the money can be excellent, allowing a traveler to save up a significant stake for the rest of the year.</li><li><strong>Finding Jobs:</strong> Websites like <strong class="text-yellow-400">CoolWorks.com</strong> specialize in seasonal jobs in National Parks, ski resorts, and summer camps.</li></ul>'},
+        microgigs: { name: 'Online Micro-Gigs', details: '<h3 class="heading-font text-2xl mb-3 text-sky-400">Online Micro-Gigs</h3><p class="text-stone-300">These are simple, repetitive online tasks that can be done from any location with a reliable internet connection, such as a public library. This is not a primary income source, but a way to earn small amounts of cash for immediate needs.</p><h4 class="font-bold text-lg text-stone-100 mt-4">Platforms & Expectations:</h4><ul class="list-disc list-inside space-y-1 text-stone-300 mt-2"><li><strong>Platforms:</strong> Amazon Mechanical Turk (MTurk), Toloka, Clickworker, Remotasks.</li><li><strong>Tasks:</strong> The work involves things like taking surveys, transcribing short audio clips, categorizing images, or verifying data.</li><li><strong>Pay:</strong> The pay is exceptionally low, often amounting to only $1-$5 per hour. It is a "grind" and requires many hours to earn a meaningful amount.</li></ul>'}
+    };
+    function initSustainSection() { createDetailView('sustain-view', earnData, 'INCOME'); }
+
+    // --- NEEDS SECTION ---
+    const needsData = {
+        food: { name: "Food", details: '<h3 class="heading-font text-2xl mb-3 text-lime-400">🍲 Food</h3><p class="text-stone-300 mb-4">Primarily use food banks and pantries. Find them via Feeding America or FoodFinder websites. Gleaning (collecting leftover crops from farms) is also a great source of fresh produce. Foraging is a supplemental skill requiring 100% positive ID of plants.</p><h4 class="font-bold text-lg text-stone-100">Urban Foraging (Dumpster Diving)</h4><ul class="list-disc list-inside space-y-1 text-stone-300 mt-2"><li><strong class="text-yellow-400">Target Grocery Stores:</strong> Aim for dumpsters behind grocery stores, bakeries, and cafes. Avoid fast food and restaurant dumpsters where food is mixed with other garbage.</li><li><strong class="text-yellow-400">Timing is Key:</strong> Go late at night, 1-2 hours after closing, to avoid employees.</li><li><strong class="text-yellow-400">Safety First:</strong> Never enter a dumpster with a compactor. Look for damage, broken seals, or leaks. Packaged goods are safest. Wash all produce thoroughly.</li><li><strong class="text-red-500">High-Risk Foods:</strong> Be extremely cautious with meat, dairy, and pre-made deli items. Unless you know it was thrown out very recently and is still cold, it is not worth the risk of foodborne illness.</li></ul>'},
+        water: { name: "Water", details: '<h3 class="heading-font text-2xl mb-3 text-sky-400">💧 Water</h3><p class="text-stone-300 mb-4">Safe public sources include libraries, parks, and visitor centers. When in doubt, ASK. In rural areas, ALWAYS purify water from natural sources with a filter or tablets. Dehydration is a rapid and serious threat.</p><h4 class="font-bold text-lg text-stone-100">Storage & Purification</h4><ul class="list-disc list-inside space-y-1 text-stone-300 mt-2"><li><strong>Carrying Capacity:</strong> Always carry more water than you think you will need. Having at least a one-gallon jug and a separate large water bottle (like a Nalgene) is a good baseline. This gives you capacity for drinking, cooking, and basic hygiene between reliable sources.</li><li><strong>Field Purification:</strong> For water from streams or rivers, a reliable method is to first pre-filter it. Run the water through a cloth like a bandana or t-shirt to remove larger sediment and debris. Then, bring the "cleaned" water to a rolling boil for at least 5 minutes to kill most harmful bacteria, viruses, and parasites.</li></ul>'},
+        hygiene: { name: "Hygiene", details: '<h3 class="heading-font text-2xl mb-3 text-yellow-400">🚿 Hygiene</h3><p class="text-stone-300 mb-4">A daily routine is crucial for health and morale. Looking clean helps immensely in social interactions and when hitchhiking.</p><h4 class="font-bold text-lg text-stone-100">The Hygiene Kit</h4><ul class="list-disc list-inside space-y-1 text-stone-300 mt-2"><li><strong>Essentials:</strong> Toothbrush, travel-size toothpaste, a bar of soap in a case, a small quick-dry towel, deodorant, and a supply of wet wipes for "field showers".</li><li><strong>Dental Care:</strong> Oral health is easy to neglect but critical. Infections can be debilitating. Brush at least once a day.</li></ul><h4 class="font-bold text-lg text-stone-100 mt-4">Laundry Strategy</h4><ul class="list-disc list-inside space-y-1 text-stone-300 mt-2"><li><strong>Laundromats:</strong> The most common option. Use the time to recharge devices and use WiFi.</li><li><strong>Hand-Washing:</strong> To save money, hand-wash essentials (socks, underwear, t-shirt) in a sink or a dry bag with a small amount of biodegradable soap. This can extend the time between laundromat visits significantly.</li></ul>'},
+        planetFitness: { name: "Planet Fitness", details: '<h3 class="heading-font text-2xl mb-3 text-yellow-400">🌐 Planet Fitness</h3><p class="text-stone-300 mb-4">A PF Black Card® membership is arguably the most valuable tool for a modern US vagabond. It provides a nationwide network of safe, clean, reliable facilities.</p><h4 class="font-bold text-lg text-stone-100">Cost vs. Benefit</h4><ul class="list-disc list-inside space-y-1 text-stone-300 mt-2"><li><strong>Cost:</strong> Approx. $25/month plus a ~$50 annual fee. This averages to less than $1/day over a year.</li><li><strong>Benefit - Showers:</strong> Unlimited access to clean, private, hot showers. This alone is worth the membership cost compared to paying for truck stop showers.</li><li><strong>Benefit - Water:</strong> Unlimited, free, filtered water. Refill all your water jugs and bottles.</li><li><strong>Tactic - Guest Pass:</strong> The Black Card® allows you to bring one guest per day. This is a valuable social currency. You can bring a friend who needs a shower, or potentially trade a guest pass for a meal or a ride.</li></ul>'}
+    };
+    function initNeedsSection() { createDetailView('needs-view', needsData, 'NEEDS'); }
+
+    // --- EMERGENCIES SECTION ---
+    const emergenciesData = {
+        sickness: { name: "Sudden Sickness", details: '<h3 class="heading-font text-2xl mb-3 text-red-400">Sudden Sickness</h3><p class="text-stone-300 mb-4">Common illnesses can become serious without proper rest and care.</p><h4 class="font-bold text-lg text-stone-100">Protocol:</h4><ul class="list-disc list-inside space-y-1 text-stone-300 mt-2"><li><strong class="text-yellow-400">Prioritize Rest:</strong> Stop traveling. Your body cannot recover if it is under constant stress. Find a safe place to rest for at least 24-48 hours.</li><li><strong class="text-yellow-400">Hydration is Key:</strong> For fever, vomiting, or diarrhea, dehydration is the primary danger. Sip water, electrolyte drinks, or broth continuously.</li><li><strong class="text-yellow-400">Basic Meds:</strong> Carry a small kit with pain relievers/fever reducers (Ibuprofen/Acetaminophen) and anti-diarrhea medication (Loperamide).</li><li><strong class="text-red-500">When to Seek Help:</strong> If a fever is very high (103°F+), if you cannot keep any fluids down for more than 12 hours, or if you feel extremely weak or confused, you must get to an urgent care clinic or hospital.</li></ul>'},
+        environment: { name: "Environmental", details: '<h3 class="heading-font text-2xl mb-3 text-red-400">Environmental Illness</h3><p class="text-stone-300 mb-4">Exposure to extreme temperatures can be deadly.</p><h4 class="font-bold text-lg text-stone-100">Heat Stroke</h4><ul class="list-disc list-inside space-y-1 text-stone-300 mt-2"><li><strong>Symptoms:</strong> High body temperature, confusion, slurred speech, and <strong class="text-red-500">a lack of sweating</strong>. This is a medical emergency.</li><li><strong>Action:</strong> Call 911 immediately. Move the person to a shaded, cool area. Cool them down rapidly with whatever means available: spray with water, fan them, apply cool cloths. Do NOT give them fluids to drink.</li></ul><h4 class="font-bold text-lg text-stone-100 mt-4">Frostbite</h4><ul class="list-disc list-inside space-y-1 text-stone-300 mt-2"><li><strong>Symptoms:</strong> Numbness, loss of feeling, and skin that appears white, grayish, or waxy.</li><li><strong>Action:</strong> Get to a warm place. Immerse the affected area in WARM (not hot) water. Do not rub the frostbitten area, as this can cause more tissue damage. Seek medical attention.</li></ul>'},
+        injury: { name: "Injury", details: '<h3 class="heading-font text-2xl mb-3 text-red-400">Injury</h3><p class="text-stone-300 mb-4">Field treatment for common injuries when help is not immediate.</p><h4 class="font-bold text-lg text-stone-100">With a Phone:</h4><ul class="list-disc list-inside space-y-1 text-stone-300 mt-2"><li><strong class="text-yellow-400">Assess Severity:</strong> For any major injury (uncontrolled bleeding, suspected broken bone, head injury), call 911 immediately. Tell them your location as precisely as possible.</li><li><strong>Control Bleeding:</strong> Apply direct, firm pressure to the wound with a clean cloth.</li></ul><h4 class="font-bold text-lg text-stone-100 mt-4">Without a Phone:</h4><ul class="list-disc list-inside space-y-1 text-stone-300 mt-2"><li><strong>Your Goal is Self-Rescue:</strong> Your priority is to get to a place where you can call for help.</li><li><strong>Stabilize:</strong> Control bleeding. If you suspect a fracture, create a makeshift splint using sticks and cloth to immobilize the limb before attempting to move.</li><li><strong>Signal for Help:</strong> If you cannot move, try to make yourself visible. Use a mirror or bright object to signal. Use a whistle (three blasts is a universal distress signal).</li></ul>'}
+    };
+    function initEmergenciesSection() { createDetailView('emergencies-view', emergenciesData, 'EMERGENCIES'); }
+
+    // --- SURVIVE SECTION ---
+    const wildlifeData = [
+        {
+            animal: 'Grizzly/Brown Bear',
+            region: 'AK, WY, MT, ID, parts of WA',
+            season: 'Active: Apr-Nov (Hibernates in winter)',
+            action: 'DO NOT RUN. Talk calmly. Back away slowly. If charged, use bear spray.',
+            attack: '<strong>PLAY DEAD.</strong> Stomach down, protect neck.',
+            notes: 'Field Notes: Motivated by food. Their sense of smell is legendary. Proper food storage is not a suggestion, it is the law in many areas and the only effective prevention.'
+        },
+        {
+            animal: 'Black Bear',
+            region: 'Widespread in forested areas nationwide',
+            season: 'Active: Spring-Fall (or Year-round in South)',
+            action: 'Make noise. Get big. Shout. Throw objects.',
+            attack: '<strong>FIGHT BACK.</strong> Do not play dead. Hit face/muzzle.',
+            notes: 'Field Notes: More curious and less aggressive than grizzlies, but still dangerous. Most negative encounters are due to bears becoming habituated to human food.'
+        },
+        {
+            animal: 'Mountain Lion',
+            region: 'Western US, Florida',
+            season: 'Active: Year-round (esp. dawn/dusk)',
+            action: 'DO NOT RUN. Make eye contact. Get big. Shout.',
+            attack: '<strong>FIGHT BACK.</strong> Stay standing. Protect neck.',
+            notes: 'Field Notes: A stealth predator. Running can trigger their prey drive. They prefer to ambush, so be extra vigilant in dense brush at dawn and dusk.'
+        },
+        {
+            animal: 'Rattlesnake',
+            region: 'Widespread, esp. Southwest & Southeast',
+            season: 'Active: Apr-Oct (Nocturnal in summer heat)',
+            action: 'Freeze. Locate snake. Back away slowly.',
+            bite: '<strong>SEEK MEDICAL HELP.</strong> Stay calm. Keep bite below heart.',
+            notes: 'Field Notes: A defensive animal that bites when it feels cornered or threatened. They are cold-blooded and will often sun themselves on rocks or warm pavement.'
+        },
+        {
+            animal: 'Alligator',
+            region: 'Southeast (FL, LA, GA, SC)',
+            season: 'Active: Mar-Oct (or Year-round in S. FL)',
+            action: 'Keep 30ft+ distance. Back away slowly.',
+            attack: 'Run in a straight line away from water. Fight back (eyes/snout).',
+            notes: 'Field Notes: Territorial, especially during mating season. Never walk pets near the water\'s edge in gator country. An alligator that has been fed by humans is extremely dangerous.'
+        }
+    ];
+    function initSurviveSection() {
+        const guide = document.getElementById('wildlife-guide');
+        guide.innerHTML = `<table class="w-full text-sm text-left">
+            <thead class="bg-neutral-700"><tr>
+                <th class="p-2 font-semibold">Threat</th>
+                <th class="p-2 font-semibold">Encounter Protocol</th>
+                <th class="p-2 font-semibold text-red-500">Attack Response</th>
+            </tr></thead>
+            <tbody>
+            ${wildlifeData.map(w => `
+                <tr class="border-b border-neutral-700 align-top">
+                    <td class="p-2">
+                        <p class="font-bold text-stone-100">${w.animal}</p>
+                        <p class="text-xs text-yellow-400">${w.region}</p>
+                        <p class="text-xs text-sky-400">${w.season}</p>
+                    </td>
+                    <td class="p-2">
+                        <p>${w.action}</p>
+                        <p class="text-sm text-stone-400 mt-1">${w.notes}</p>
+                    </td>
+                    <td class="p-2 text-red-400">${w.attack || w.bite}</td>
+                </tr>
+            `).join('')}
+            </tbody></table>`;
+    }
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="description" content="Analog Audio Restorer Pro: a browser-based DAW tool with EQ, filters, waveform display, and WAV export.">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analog Audio Restorer Pro</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #111827; }
+        ::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #4b5563; }
+
+        /* Range Slider Styling */
+        input[type=range] { -webkit-appearance: none; background: transparent; }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%;
+            background: #3b82f6; margin-top: -6px; box-shadow: 0 0 5px rgba(59, 130, 246, 0.5); cursor: pointer;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 4px; background: #4b5563; border-radius: 2px;
+        }
+        input[type=range]:focus { outline: none; }
+
+        /* Seek Slider Specifics */
+        #seek-slider {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 20;
+            opacity: 0; cursor: text;
+        }
+
+        /* EQ Graph Canvas */
+        #eq-graph-canvas {
+            width: 100%; height: 100%;
+        }
+
+        .band-btn.active {
+            background-color: #3b82f6;
+            color: white;
+            border-color: #2563eb;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+        }
+    </style>
+</head>
+<body class="bg-gray-950 text-gray-200 font-sans h-screen flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between px-6 py-4 bg-gray-900 border-b border-gray-800 shadow-md z-10">
+        <div class="flex items-center space-x-3">
+            <div class="p-2 bg-blue-600 rounded-lg shadow-lg shadow-blue-900/50">
+                <i data-lucide="waves" class="text-white w-6 h-6"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold tracking-tight text-white">Analog Audio Restorer <span class="text-blue-500">Pro</span></h1>
+                <div class="flex items-center space-x-2">
+                    <span class="text-xs text-blue-400 uppercase tracking-widest font-mono">DAW-9000</span>
+                    <span id="filename-display" class="text-xs text-gray-500 font-mono">| No tape loaded</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-4">
+            <button id="btn-bypass" class="flex items-center space-x-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white text-sm font-medium rounded-md cursor-pointer transition border border-gray-700 disabled:opacity-50" disabled>
+                <i data-lucide="power-off" class="w-4 h-4"></i>
+                <span>FX: ON</span>
+            </button>
+
+            <button id="btn-export" class="flex items-center space-x-2 px-4 py-2 bg-gray-800 hover:bg-green-700 hover:text-white text-sm font-medium rounded-md cursor-pointer transition border border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                <i data-lucide="download" class="w-4 h-4"></i>
+                <span>Export WAV</span>
+            </button>
+
+            <label class="flex items-center space-x-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-sm font-medium rounded-md cursor-pointer transition border border-gray-700 select-none">
+                <i data-lucide="upload" class="w-4 h-4 text-blue-400"></i>
+                <span>Import Tape</span>
+                <input type="file" id="file-input" accept="audio/*" class="hidden" />
+            </label>
+        </div>
+    </div>
+
+    <!-- Main Workspace -->
+    <div class="flex-1 flex flex-col p-6 space-y-6 overflow-y-auto">
+
+        <!-- Visualization Rack -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 h-64 shrink-0">
+            <!-- Waveform View -->
+            <div class="lg:col-span-2 relative bg-gray-900 rounded-xl border border-gray-800 shadow-inner overflow-hidden flex flex-col group">
+                <div class="absolute top-2 left-3 text-xs text-gray-500 font-mono z-10">WAVEFORM MONITOR</div>
+                <canvas id="waveform-canvas" width="800" height="256" class="w-full h-full opacity-80"></canvas>
+                <div id="playhead" class="absolute top-0 bottom-0 w-0.5 bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)] transition-none pointer-events-none" style="left: 0%;"></div>
+                <input type="range" id="seek-slider" min="0" max="100" step="0.1" value="0" disabled>
+                <div class="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+            </div>
+
+            <!-- Spectrum Analyzer -->
+            <div class="relative bg-gray-900 rounded-xl border border-gray-800 shadow-inner overflow-hidden">
+                <div class="absolute top-2 left-3 text-xs text-gray-500 font-mono z-10">SPECTRUM ANALYZER</div>
+                <canvas id="spectrum-canvas" width="400" height="256" class="w-full h-full"></canvas>
+            </div>
+        </div>
+
+        <!-- Processing Racks -->
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 pb-6">
+
+            <!-- Rack 1: Transport -->
+            <div class="bg-gray-900 rounded-xl border border-gray-800 p-4 shadow-lg flex flex-col space-y-4">
+                <div class="flex items-center space-x-2 mb-2 border-b border-gray-800 pb-2">
+                    <i data-lucide="activity" class="w-4 h-4 text-green-500"></i>
+                    <h3 class="text-sm font-bold text-gray-300 uppercase tracking-widest">Transport</h3>
+                </div>
+
+                <div class="flex justify-center space-x-4 mb-2">
+                    <button id="btn-play" class="hidden p-4 bg-green-600 hover:bg-green-500 text-white rounded-full shadow-lg shadow-green-900/50 transition">
+                        <i data-lucide="play" class="w-6 h-6 fill-current"></i>
+                    </button>
+                    <button id="btn-pause" class="hidden p-4 bg-amber-500 hover:bg-amber-400 text-white rounded-full shadow-lg shadow-amber-900/50 transition">
+                        <i data-lucide="pause" class="w-6 h-6 fill-current"></i>
+                    </button>
+                    <button id="btn-stop" class="p-4 bg-gray-700 hover:bg-gray-600 text-white rounded-full shadow-lg transition opacity-50 cursor-not-allowed" disabled>
+                        <i data-lucide="square" class="w-6 h-6 fill-current"></i>
+                    </button>
+                </div>
+
+                <div class="space-y-3 px-2">
+                    <div class="flex flex-col items-center justify-center p-2 bg-gray-800 rounded-lg shadow-inner border border-gray-700">
+                        <span class="text-xs text-gray-400 font-mono mb-1 uppercase tracking-wider">Speed</span>
+                        <input type="range" id="param-speed" min="0.5" max="1.5" step="0.01" value="1.0" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer">
+                        <span id="val-speed" class="text-xs text-blue-300 font-mono mt-1">1.0 x</span>
+                    </div>
+                    <div class="flex flex-col items-center justify-center p-2 bg-gray-800 rounded-lg shadow-inner border border-gray-700">
+                        <span class="text-xs text-gray-400 font-mono mb-1 uppercase tracking-wider">Volume</span>
+                        <input type="range" id="param-vol" min="0" max="2" step="0.01" value="1.0" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer">
+                        <span id="val-vol" class="text-xs text-blue-300 font-mono mt-1">1.0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rack 2: Cleanup (Macro Filters) -->
+            <div class="bg-gray-900 rounded-xl border border-gray-800 p-4 shadow-lg flex flex-col space-y-4">
+                <div class="flex items-center space-x-2 mb-2 border-b border-gray-800 pb-2">
+                    <i data-lucide="scissors" class="w-4 h-4 text-blue-500"></i>
+                    <h3 class="text-sm font-bold text-gray-300 uppercase tracking-widest">Pre-Amp / Filters</h3>
+                </div>
+
+                <div class="space-y-4 h-full flex flex-col justify-center">
+                     <!-- Pan -->
+                     <div class="flex flex-col items-center justify-center p-2 bg-gray-800 rounded-lg shadow-inner border border-gray-700">
+                        <span class="text-xs text-gray-400 font-mono mb-1 uppercase tracking-wider">Pan</span>
+                        <input type="range" id="param-pan" min="-1" max="1" step="0.05" value="0" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer">
+                        <span id="val-pan" class="text-xs text-blue-300 font-mono mt-1">Center</span>
+                    </div>
+
+                    <!-- Rumble -->
+                    <div class="flex flex-col items-center justify-center p-2 bg-gray-800 rounded-lg shadow-inner border border-gray-700">
+                        <span class="text-xs text-gray-400 font-mono mb-1 uppercase tracking-wider">Rumble (HPF)</span>
+                        <input type="range" id="param-hpf" min="0" max="500" step="1" value="0" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer">
+                        <span id="val-hpf" class="text-xs text-blue-300 font-mono mt-1">0 Hz</span>
+                    </div>
+
+                    <!-- Hiss -->
+                    <div class="flex flex-col items-center justify-center p-2 bg-gray-800 rounded-lg shadow-inner border border-gray-700">
+                        <span class="text-xs text-gray-400 font-mono mb-1 uppercase tracking-wider">Hiss (LPF)</span>
+                        <input type="range" id="param-lpf" min="2000" max="20000" step="100" value="20000" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer">
+                        <span id="val-lpf" class="text-xs text-blue-300 font-mono mt-1">20000 Hz</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rack 3: 5-Band Parametric EQ -->
+            <div class="bg-gray-900 rounded-xl border border-gray-800 p-4 shadow-lg flex flex-col space-y-4 md:col-span-2">
+                <div class="flex items-center justify-between mb-2 border-b border-gray-800 pb-2">
+                    <div class="flex items-center space-x-2">
+                        <i data-lucide="sliders" class="w-4 h-4 text-purple-500"></i>
+                        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-widest">5-Band Parametric EQ</h3>
+                    </div>
+                    <div class="text-[10px] text-gray-500 font-mono">DIGITAL EQUALIZER</div>
+                </div>
+
+                <div class="flex flex-col h-full space-y-4">
+                    <!-- EQ Response Graph -->
+                    <div class="h-24 bg-gray-950 border border-gray-800 rounded-lg relative overflow-hidden">
+                        <canvas id="eq-graph-canvas" width="400" height="100" class="w-full h-full opacity-90"></canvas>
+                        <!-- Grid Lines overlay (CSS or simple divs) -->
+                        <div class="absolute top-0 bottom-0 left-1/2 w-px bg-white/5 pointer-events-none"></div>
+                        <div class="absolute top-1/2 left-0 right-0 h-px bg-white/5 pointer-events-none"></div>
+                    </div>
+
+                    <!-- Band Selector -->
+                    <div class="flex justify-between gap-2">
+                        <button class="band-btn flex-1 py-1 rounded border border-gray-700 bg-gray-800 text-xs font-mono text-gray-400 hover:bg-gray-700 transition" data-band="0">LOW</button>
+                        <button class="band-btn flex-1 py-1 rounded border border-gray-700 bg-gray-800 text-xs font-mono text-gray-400 hover:bg-gray-700 transition" data-band="1">L-MID</button>
+                        <button class="band-btn flex-1 py-1 rounded border border-gray-700 bg-gray-800 text-xs font-mono text-gray-400 hover:bg-gray-700 transition active" data-band="2">MID</button>
+                        <button class="band-btn flex-1 py-1 rounded border border-gray-700 bg-gray-800 text-xs font-mono text-gray-400 hover:bg-gray-700 transition" data-band="3">H-MID</button>
+                        <button class="band-btn flex-1 py-1 rounded border border-gray-700 bg-gray-800 text-xs font-mono text-gray-400 hover:bg-gray-700 transition" data-band="4">HIGH</button>
+                    </div>
+
+                    <!-- Selected Band Controls -->
+                    <div class="grid grid-cols-3 gap-4 p-4 bg-gray-950 rounded-lg border border-gray-800">
+                        <!-- Freq -->
+                        <div class="flex flex-col items-center justify-center">
+                            <span class="text-xs text-gray-400 font-mono mb-2 uppercase tracking-wider">Frequency</span>
+                            <input type="range" id="eq-param-freq" min="0" max="100" step="0.1" value="50" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer">
+                            <span id="eq-val-freq" class="text-xs text-purple-300 font-mono mt-1">1000 Hz</span>
+                        </div>
+                        <!-- Gain -->
+                        <div class="flex flex-col items-center justify-center">
+                            <span class="text-xs text-gray-400 font-mono mb-2 uppercase tracking-wider">Gain (dB)</span>
+                            <input type="range" id="eq-param-gain" min="-15" max="15" step="0.1" value="0" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer">
+                            <span id="eq-val-gain" class="text-xs text-purple-300 font-mono mt-1">0.0 dB</span>
+                        </div>
+                        <!-- Q -->
+                        <div class="flex flex-col items-center justify-center">
+                            <span class="text-xs text-gray-400 font-mono mb-2 uppercase tracking-wider">Width (Q)</span>
+                            <input type="range" id="eq-param-q" min="0.1" max="10" step="0.1" value="1.0" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer">
+                            <span id="eq-val-q" class="text-xs text-purple-300 font-mono mt-1">1.0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        lucide.createIcons();
+
+        // --- Global State ---
+        const state = {
+            audioContext: null,
+            audioBuffer: null,
+
+            // Nodes
+            sourceNode: null,
+            masterGain: null,
+            pannerNode: null,
+            analyserNode: null,
+
+            // Macro Filters
+            hpFilter: null,
+            lpFilter: null,
+
+            // 5-Band EQ Nodes (live)
+            eqNodes: [],
+            // 5-Band Data Config (persistent)
+            eqBands: [
+                { type: 'lowshelf', freq: 80, gain: 0, q: 0.7 },
+                { type: 'peaking', freq: 300, gain: 0, q: 1.0 },
+                { type: 'peaking', freq: 1000, gain: 0, q: 1.0 },
+                { type: 'peaking', freq: 4000, gain: 0, q: 1.0 },
+                { type: 'highshelf', freq: 10000, gain: 0, q: 0.7 }
+            ],
+
+            // Bypass Logic
+            dryGainNode: null,
+            wetGainNode: null,
+
+            // Playback
+            isPlaying: false,
+            isBypassed: false,
+            startTime: 0,
+            pauseTime: 0,
+            duration: 0,
+            animationFrame: null,
+
+            // UI State
+            selectedBandIndex: 2, // Start with MID
+
+            params: {
+                playbackRate: 1.0,
+                volume: 1.0,
+                pan: 0.0,
+                highPassFreq: 0,
+                lowPassFreq: 20000
+            }
+        };
+
+        // --- DOM Elements ---
+        const ui = {
+            fileInput: document.getElementById('file-input'),
+            filenameDisplay: document.getElementById('filename-display'),
+            btnExport: document.getElementById('btn-export'),
+            btnBypass: document.getElementById('btn-bypass'),
+            btnPlay: document.getElementById('btn-play'),
+            btnPause: document.getElementById('btn-pause'),
+            btnStop: document.getElementById('btn-stop'),
+
+            waveformCanvas: document.getElementById('waveform-canvas'),
+            spectrumCanvas: document.getElementById('spectrum-canvas'),
+            eqGraphCanvas: document.getElementById('eq-graph-canvas'),
+            playhead: document.getElementById('playhead'),
+            seekSlider: document.getElementById('seek-slider'),
+
+            // Controls
+            speed: { input: document.getElementById('param-speed'), label: document.getElementById('val-speed') },
+            vol: { input: document.getElementById('param-vol'), label: document.getElementById('val-vol') },
+            pan: { input: document.getElementById('param-pan'), label: document.getElementById('val-pan') },
+            hpf: { input: document.getElementById('param-hpf'), label: document.getElementById('val-hpf') },
+            lpf: { input: document.getElementById('param-lpf'), label: document.getElementById('val-lpf') },
+
+            // EQ Controls
+            bandBtns: document.querySelectorAll('.band-btn'),
+            eqFreq: { input: document.getElementById('eq-param-freq'), label: document.getElementById('eq-val-freq') },
+            eqGain: { input: document.getElementById('eq-param-gain'), label: document.getElementById('eq-val-gain') },
+            eqQ: { input: document.getElementById('eq-param-q'), label: document.getElementById('eq-val-q') },
+        };
+
+        // --- Helper for Logarithmic Sliders ---
+        const sliderToFreq = (val) => 20 * Math.pow(1000, val/100);
+        const freqToSlider = (freq) => 100 * (Math.log10(Math.max(20, Math.min(20000, freq))/20) / 3); // 3 comes from log10(20000/20) approx
+
+        // --- Initialization ---
+        function initAudio() {
+            if (state.audioContext) return;
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            state.audioContext = new AudioContext();
+
+            // Create Master & Macro Nodes
+            state.masterGain = state.audioContext.createGain();
+            state.pannerNode = state.audioContext.createStereoPanner();
+            state.analyserNode = state.audioContext.createAnalyser();
+            state.hpFilter = state.audioContext.createBiquadFilter();
+            state.lpFilter = state.audioContext.createBiquadFilter();
+            state.dryGainNode = state.audioContext.createGain();
+            state.wetGainNode = state.audioContext.createGain();
+
+            // Config Macro
+            state.analyserNode.fftSize = 2048;
+            state.hpFilter.type = 'highpass';
+            state.lpFilter.type = 'lowpass';
+
+            // Create EQ Chain Nodes
+            state.eqNodes = state.eqBands.map(band => {
+                const f = state.audioContext.createBiquadFilter();
+                f.type = band.type;
+                f.frequency.value = band.freq;
+                f.gain.value = band.gain;
+                f.Q.value = band.q;
+                return f;
+            });
+
+            // CONNECT THE GRAPH
+            // Wet Path: Source -> HP -> LP -> [EQ1...EQ5] -> WetGain
+            state.hpFilter.connect(state.lpFilter);
+            let prev = state.lpFilter;
+            state.eqNodes.forEach(node => {
+                prev.connect(node);
+                prev = node;
+            });
+            prev.connect(state.wetGainNode);
+
+            // Dry Path: Source -> DryGain
+            // (Source connects to HP and DryGain in playAudio/seek)
+
+            // Merge Paths -> Panner -> Master -> Analyser -> Dest
+            state.wetGainNode.connect(state.pannerNode);
+            state.dryGainNode.connect(state.pannerNode);
+            state.pannerNode.connect(state.masterGain);
+            state.masterGain.connect(state.analyserNode);
+            state.analyserNode.connect(state.audioContext.destination);
+
+            applyParams();
+            updateBypassState();
+            updateEQControlsUI(); // Set initial knobs based on default Mid band
+            drawEQGraph();
+        }
+
+        function updateBypassState() {
+            if (!state.audioContext) return;
+            const now = state.audioContext.currentTime;
+            if (state.isBypassed) {
+                state.dryGainNode.gain.setTargetAtTime(1, now, 0.01);
+                state.wetGainNode.gain.setTargetAtTime(0, now, 0.01);
+                ui.btnBypass.classList.add('bg-red-900', 'text-red-100', 'border-red-700');
+                ui.btnBypass.classList.remove('bg-gray-800', 'text-gray-400');
+                ui.btnBypass.innerHTML = `<i data-lucide="power" class="w-4 h-4"></i><span>BYPASSED</span>`;
+            } else {
+                state.dryGainNode.gain.setTargetAtTime(0, now, 0.01);
+                state.wetGainNode.gain.setTargetAtTime(1, now, 0.01);
+                ui.btnBypass.classList.remove('bg-red-900', 'text-red-100', 'border-red-700');
+                ui.btnBypass.classList.add('bg-gray-800', 'text-gray-400');
+                ui.btnBypass.innerHTML = `<i data-lucide="power-off" class="w-4 h-4"></i><span>FX: ON</span>`;
+            }
+            lucide.createIcons();
+        }
+
+        function applyParams() {
+            if (!state.audioContext) return;
+            if(state.sourceNode) state.sourceNode.playbackRate.value = state.params.playbackRate;
+            state.masterGain.gain.value = state.params.volume;
+            state.pannerNode.pan.value = state.params.pan;
+            state.hpFilter.frequency.value = Math.max(state.params.highPassFreq, 0.0001);
+            state.lpFilter.frequency.value = Math.max(state.params.lowPassFreq, 0.0001);
+
+            // Update Text Labels for Macros
+            ui.speed.label.innerText = state.params.playbackRate + ' x';
+            ui.vol.label.innerText = Math.round(state.params.volume * 100) + '%';
+            ui.hpf.label.innerText = state.params.highPassFreq + ' Hz';
+            ui.lpf.label.innerText = state.params.lowPassFreq + ' Hz';
+
+            // Pan Label
+            let p = state.params.pan;
+            if(p < -0.05) ui.pan.label.innerText = "L " + Math.round(Math.abs(p)*100);
+            else if(p > 0.05) ui.pan.label.innerText = "R " + Math.round(p*100);
+            else ui.pan.label.innerText = "Center";
+        }
+
+        // --- EQ Logic ---
+        function updateEQControlsUI() {
+            const band = state.eqBands[state.selectedBandIndex];
+
+            // Update Inputs
+            ui.eqFreq.input.value = freqToSlider(band.freq);
+            ui.eqGain.input.value = band.gain;
+            ui.eqQ.input.value = band.q;
+
+            // Update Labels
+            ui.eqFreq.label.innerText = Math.round(band.freq) + ' Hz';
+            ui.eqGain.label.innerText = band.gain.toFixed(1) + ' dB';
+            ui.eqQ.label.innerText = band.q.toFixed(1);
+
+            // Update Active Button State
+            ui.bandBtns.forEach((btn, idx) => {
+                if (idx === state.selectedBandIndex) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
+        }
+
+        function updateEQBandParam(param, value) {
+            const bandIdx = state.selectedBandIndex;
+            const bandData = state.eqBands[bandIdx];
+
+            let val = parseFloat(value);
+            if (param === 'freq') {
+                val = sliderToFreq(val);
+                bandData.freq = val;
+            } else if (param === 'gain') {
+                bandData.gain = val;
+            } else if (param === 'q') {
+                bandData.q = val;
+            }
+
+            // Update Live Node if exists
+            if (state.eqNodes[bandIdx]) {
+                const node = state.eqNodes[bandIdx];
+                const ctxTime = state.audioContext.currentTime;
+                if(param === 'freq') node.frequency.setTargetAtTime(val, ctxTime, 0.02);
+                if(param === 'gain') node.gain.setTargetAtTime(val, ctxTime, 0.02);
+                if(param === 'q') node.Q.setTargetAtTime(val, ctxTime, 0.02);
+            }
+
+            updateEQControlsUI();
+            drawEQGraph();
+        }
+
+        // --- EQ Graph Visualizer ---
+        function drawEQGraph() {
+            const cvs = ui.eqGraphCanvas;
+            const ctx = cvs.getContext('2d');
+            const w = cvs.width;
+            const h = cvs.height;
+
+            // Prepare Freq Array
+            const freqArray = new Float32Array(w);
+            const magArray = new Float32Array(w);
+            const phaseArray = new Float32Array(w);
+            for (let i=0; i<w; i++) {
+                // Logarithmic mapping 20Hz - 20kHz
+                freqArray[i] = 20 * Math.pow(1000, i/w);
+            }
+
+            // Calculate total response
+            const totalMag = new Float32Array(w).fill(1.0);
+
+            // Create temporary filters to calculate curve (without affecting audio)
+            // Or use the live nodes? Live nodes are best but getting response is synchronous
+            // We can iterate state.eqBands and simulate
+            if (state.audioContext) {
+                 const dummyNodes = state.eqBands.map(b => {
+                     const f = state.audioContext.createBiquadFilter();
+                     f.type = b.type; f.frequency.value = b.freq; f.gain.value = b.gain; f.Q.value = b.q;
+                     return f;
+                 });
+
+                 dummyNodes.forEach(node => {
+                     node.getFrequencyResponse(freqArray, magArray, phaseArray);
+                     for(let i=0; i<w; i++) totalMag[i] *= magArray[i];
+                 });
+            }
+
+            // Clear
+            ctx.clearRect(0,0,w,h);
+
+            // Draw Grid (Log)
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            [100, 1000, 10000].forEach(f => {
+                const x = (Math.log10(f/20) / 3) * w;
+                ctx.moveTo(x, 0); ctx.lineTo(x, h);
+            });
+            // 0dB Line
+            const y0 = h/2;
+            ctx.moveTo(0, y0); ctx.lineTo(w, y0);
+            ctx.stroke();
+
+            // Draw Curve
+            ctx.strokeStyle = '#00ff00';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for (let i=0; i<w; i++) {
+                const db = 20 * Math.log10(totalMag[i]);
+                // Scale: let's say +/- 20dB covers the height
+                const y = y0 - (db * (h/40));
+                if (i===0) ctx.moveTo(i, y);
+                else ctx.lineTo(i, y);
+            }
+            ctx.stroke();
+        }
+
+
+        // --- File Handling ---
+        ui.fileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            initAudio();
+            stopAudio();
+
+            ui.filenameDisplay.innerText = "| Loading...";
+            ui.btnExport.disabled = true;
+            ui.btnBypass.disabled = true;
+            ui.seekSlider.disabled = true;
+
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                const arrayBuffer = event.target.result;
+                try {
+                    const decoded = await state.audioContext.decodeAudioData(arrayBuffer);
+                    state.audioBuffer = decoded;
+                    state.duration = decoded.duration;
+                    ui.filenameDisplay.innerText = "| " + file.name;
+                    drawWaveform(decoded);
+
+                    // Enable UI
+                    ui.btnPlay.classList.remove('hidden');
+                    ui.btnStop.disabled = false;
+                    ui.btnStop.classList.remove('opacity-50', 'cursor-not-allowed');
+                    ui.btnExport.disabled = false;
+                    ui.btnBypass.disabled = false;
+                    ui.seekSlider.disabled = false;
+                    ui.seekSlider.value = 0;
+                } catch(err) {
+                    console.error(err);
+                    ui.filenameDisplay.innerText = "| Error decoding";
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        // --- Transport ---
+        function playAudio() {
+            if (!state.audioBuffer || !state.audioContext) return;
+            if (state.audioContext.state === 'suspended') state.audioContext.resume();
+
+            if (state.sourceNode) try { state.sourceNode.disconnect(); } catch(e){}
+
+            const src = state.audioContext.createBufferSource();
+            src.buffer = state.audioBuffer;
+            src.playbackRate.value = state.params.playbackRate;
+
+            // Connect to both paths
+            src.connect(state.hpFilter); // Wet chain start
+            src.connect(state.dryGainNode); // Dry chain start
+
+            state.sourceNode = src;
+            const offset = state.pauseTime;
+            src.start(0, offset);
+            state.startTime = state.audioContext.currentTime - (offset / state.params.playbackRate);
+            state.isPlaying = true;
+
+            ui.btnPlay.classList.add('hidden');
+            ui.btnPause.classList.remove('hidden');
+            drawSpectrum();
+
+            src.onended = () => {
+                const expectedEnd = state.startTime + (state.duration / state.params.playbackRate);
+                if (state.isPlaying && state.audioContext.currentTime >= expectedEnd - 0.1) {
+                    stopAudio(false);
+                }
+            };
+        }
+
+        function pauseAudio() {
+            if (state.isPlaying && state.sourceNode) {
+                state.sourceNode.stop();
+                const elapsed = (state.audioContext.currentTime - state.startTime) * state.params.playbackRate;
+                state.pauseTime = elapsed % state.duration;
+                state.isPlaying = false;
+                cancelAnimationFrame(state.animationFrame);
+
+                ui.btnPause.classList.add('hidden');
+                ui.btnPlay.classList.remove('hidden');
+            }
+        }
+
+        function stopAudio(resetUI = true) {
+            if (state.sourceNode) try { state.sourceNode.stop(); } catch(e){}
+            state.isPlaying = false;
+            state.pauseTime = 0;
+            state.sourceNode = null;
+            cancelAnimationFrame(state.animationFrame);
+            ui.playhead.style.left = '0%';
+            ui.seekSlider.value = 0;
+
+            if (resetUI) {
+                ui.btnPause.classList.add('hidden');
+                ui.btnPlay.classList.remove('hidden');
+                // Clear spectrum
+                const ctx = ui.spectrumCanvas.getContext('2d');
+                ctx.fillStyle = '#111827';
+                ctx.fillRect(0,0,ui.spectrumCanvas.width, ui.spectrumCanvas.height);
+            } else {
+                ui.btnPause.classList.add('hidden');
+                ui.btnPlay.classList.remove('hidden');
+            }
+        }
+
+        // --- Seek ---
+        ui.seekSlider.addEventListener('input', (e) => {
+            const pct = parseFloat(e.target.value);
+            const time = (pct/100) * state.duration;
+            state.pauseTime = time;
+            ui.playhead.style.left = `${pct}%`;
+
+            if (state.isPlaying) {
+                 if (state.sourceNode) try { state.sourceNode.stop(); } catch(e){}
+                 const src = state.audioContext.createBufferSource();
+                 src.buffer = state.audioBuffer;
+                 src.playbackRate.value = state.params.playbackRate;
+                 src.connect(state.hpFilter);
+                 src.connect(state.dryGainNode);
+                 state.sourceNode = src;
+                 src.start(0, time);
+                 state.startTime = state.audioContext.currentTime - (time / state.params.playbackRate);
+                 src.onended = () => {
+                    const expectedEnd = state.startTime + (state.duration / state.params.playbackRate);
+                    if (state.isPlaying && state.audioContext.currentTime >= expectedEnd - 0.1) stopAudio(false);
+                 };
+            }
+        });
+
+        // --- Event Listeners ---
+        ui.btnPlay.onclick = playAudio;
+        ui.btnPause.onclick = pauseAudio;
+        ui.btnStop.onclick = () => stopAudio(true);
+        ui.btnBypass.onclick = () => { state.isBypassed = !state.isBypassed; updateBypassState(); };
+
+        // Param listeners
+        ui.speed.input.oninput = (e) => { state.params.playbackRate = parseFloat(e.target.value); applyParams(); };
+        ui.vol.input.oninput = (e) => { state.params.volume = parseFloat(e.target.value); applyParams(); };
+        ui.pan.input.oninput = (e) => { state.params.pan = parseFloat(e.target.value); applyParams(); };
+        ui.hpf.input.oninput = (e) => { state.params.highPassFreq = parseFloat(e.target.value); applyParams(); };
+        ui.lpf.input.oninput = (e) => { state.params.lowPassFreq = parseFloat(e.target.value); applyParams(); };
+
+        // EQ listeners
+        ui.bandBtns.forEach((btn, idx) => {
+            btn.onclick = () => {
+                state.selectedBandIndex = idx;
+                updateEQControlsUI();
+            }
+        });
+        ui.eqFreq.input.oninput = (e) => updateEQBandParam('freq', e.target.value);
+        ui.eqGain.input.oninput = (e) => updateEQBandParam('gain', e.target.value);
+        ui.eqQ.input.oninput = (e) => updateEQBandParam('q', e.target.value);
+
+        // --- Visualizers ---
+        function drawWaveform(buffer) {
+            const canvas = ui.waveformCanvas;
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+            const data = buffer.getChannelData(0);
+            const step = Math.ceil(data.length / w);
+            const amp = h / 2;
+            ctx.fillStyle = '#1f2937'; ctx.fillRect(0,0,w,h);
+            ctx.beginPath(); ctx.strokeStyle = '#60a5fa'; ctx.lineWidth = 1;
+            for(let i=0; i<w; i++){
+                let min=1.0, max=-1.0;
+                for(let j=0; j<step; j++){
+                    const val = data[(i*step)+j];
+                    if(val<min) min=val; if(val>max) max=val;
+                }
+                ctx.moveTo(i, (1+min)*amp); ctx.lineTo(i, (1+max)*amp);
+            }
+            ctx.stroke();
+        }
+
+        function drawSpectrum() {
+            if (!state.isPlaying) return;
+            const canvas = ui.spectrumCanvas;
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width; const h = canvas.height;
+            const len = state.analyserNode.frequencyBinCount;
+            const data = new Uint8Array(len);
+            state.analyserNode.getByteFrequencyData(data);
+
+            ctx.fillStyle = '#111827'; ctx.fillRect(0,0,w,h);
+            const barWidth = (w/len)*2.5; let x=0;
+            for(let i=0; i<len; i++){
+                const barH = data[i]/2;
+                const r = barH + (25*(i/len));
+                const g = 250*(i/len);
+                const b = 50;
+                ctx.fillStyle = `rgb(${r},${g},${b})`;
+                ctx.fillRect(x, h-barH, barWidth, barH);
+                x += barWidth+1;
+            }
+
+            const elapsed = (state.audioContext.currentTime - state.startTime)*state.params.playbackRate;
+            const pct = (elapsed/state.duration)*100;
+            if(pct<=100) {
+                ui.playhead.style.left = `${pct}%`;
+                if(document.activeElement !== ui.seekSlider) ui.seekSlider.value = pct;
+            }
+            state.animationFrame = requestAnimationFrame(drawSpectrum);
+        }
+
+
+        // --- Export WAV Logic ---
+        ui.btnExport.onclick = async () => {
+            if(!state.audioBuffer) return;
+            ui.btnExport.disabled = true;
+            ui.btnExport.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>Processing...</span>`;
+
+            const offlineCtx = new OfflineAudioContext(2, state.duration * 44100, 44100);
+            const src = offlineCtx.createBufferSource();
+            src.buffer = state.audioBuffer;
+            src.playbackRate.value = state.params.playbackRate;
+            let chain = src;
+
+            if (!state.isBypassed) {
+                // Apply HP/LP
+                const hp = offlineCtx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=Math.max(state.params.highPassFreq, 0.0001);
+                const lp = offlineCtx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=Math.max(state.params.lowPassFreq, 0.0001);
+                chain.connect(hp); hp.connect(lp); chain = lp;
+
+                // Apply 5-Band EQ
+                state.eqBands.forEach(b => {
+                    const f = offlineCtx.createBiquadFilter();
+                    f.type = b.type; f.frequency.value = b.freq; f.gain.value = b.gain; f.Q.value = b.q;
+                    chain.connect(f); chain = f;
+                });
+            }
+
+            // Apply Pan & Vol
+            const pan = offlineCtx.createStereoPanner(); pan.pan.value = state.params.pan;
+            const vol = offlineCtx.createGain(); vol.gain.value = state.params.volume;
+
+            chain.connect(pan); pan.connect(vol); vol.connect(offlineCtx.destination);
+
+            src.start(0);
+            try {
+                const rendered = await offlineCtx.startRendering();
+                const wav = audioBufferToWav(rendered);
+                const blob = new Blob([wav], {type:'audio/wav'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a'); a.style.display='none'; a.href=url; a.download='restored_master.wav';
+                document.body.appendChild(a); a.click();
+                URL.revokeObjectURL(url);
+            } catch(e) { console.error(e); alert("Export failed"); }
+
+            ui.btnExport.innerHTML = `<i data-lucide="download" class="w-4 h-4"></i><span>Export WAV</span>`;
+            ui.btnExport.disabled = false;
+            lucide.createIcons();
+        };
+
+        // --- WAV Encoder ---
+        function audioBufferToWav(buffer) {
+            const numChannels = buffer.numberOfChannels;
+            const sampleRate = buffer.sampleRate;
+            const bitDepth = 16;
+            let result = numChannels === 2 ? interleave(buffer.getChannelData(0), buffer.getChannelData(1)) : buffer.getChannelData(0);
+            return encodeWAV(result, numChannels, sampleRate, bitDepth);
+        }
+        function interleave(l, r) {
+            const len = l.length + r.length; const res = new Float32Array(len);
+            let i = 0; let k = 0;
+            while (i < len) { res[i++] = l[k]; res[i++] = r[k]; k++; }
+            return res;
+        }
+        function encodeWAV(samples, ch, rate, depth) {
+            const buf = new ArrayBuffer(44 + samples.length * 2);
+            const v = new DataView(buf);
+            const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+            w(0, 'RIFF'); v.setUint32(4, 36 + samples.length * 2, true); w(8, 'WAVE'); w(12, 'fmt ');
+            v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, ch, true);
+            v.setUint32(24, rate, true); v.setUint32(28, rate * ch * 2, true); v.setUint16(32, ch * 2, true);
+            v.setUint16(34, depth, true); w(36, 'data'); v.setUint32(40, samples.length * 2, true);
+            let o = 44;
+            for (let i = 0; i < samples.length; i++) {
+                let s = Math.max(-1, Math.min(1, samples[i]));
+                v.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7FFF, true); o += 2;
+            }
+            return v;
+        }
+
+    </script>
+</body>
+</html>

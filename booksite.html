@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="description" content="A local book collection manager. Add, search, and organize your books with JSON import/export.">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Local Book Catalog (JSON)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom color palette */
+        :root {
+            --ocean-deep-900: #0a192f;
+            --ocean-deep-800: #112240;
+            --ocean-deep-700: #233554;
+            --copper-600: #b9774e;
+            --copper-700: #a16640;
+            --copper-500: #d99066;
+            --copper-400: #e6a885;
+            --copper-300: #f2c0a3;
+        }
+        body {
+            background-color: var(--ocean-deep-900);
+            color: #e2e8f0; /* A light gray from Tailwind */
+            font-family: sans-serif;
+        }
+        /* Applying custom colors with Tailwind classes */
+        .bg-ocean-deep-900 { background-color: var(--ocean-deep-900); }
+        .bg-ocean-deep-800 { background-color: var(--ocean-deep-800); }
+        .bg-ocean-deep-700 { background-color: var(--ocean-deep-700); }
+        .text-copper-300 { color: var(--copper-300); }
+        .text-copper-400 { color: var(--copper-400); }
+        .border-ocean-deep-700 { border-color: var(--ocean-deep-700); }
+        .focus\:border-copper-500:focus { border-color: var(--copper-500); }
+        .bg-copper-600 { background-color: var(--copper-600); }
+        .hover\:bg-copper-700:hover { background-color: var(--copper-700); }
+        .text-ocean-deep-700 { color: var(--ocean-deep-700); }
+
+        /* Simple transition for page switching */
+        .page {
+            display: none;
+            animation: fadeIn 0.5s;
+        }
+        .page.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-6 lg:p-8">
+
+    <nav class="max-w-4xl mx-auto mb-8 flex justify-center items-center space-x-4 bg-ocean-deep-800 p-3 rounded-xl shadow-lg">
+        <button id="nav-add" class="px-6 py-2 rounded-lg font-semibold transition-colors bg-copper-600 text-white">
+            Add Book
+        </button>
+        <button id="nav-view" class="px-6 py-2 rounded-lg font-semibold transition-colors text-copper-300 hover:bg-ocean-deep-700">
+            View Collection
+        </button>
+    </nav>
+
+    <main>
+        <!-- Add Book Page -->
+        <div id="page-add" class="page active">
+            <div class="max-w-lg mx-auto bg-ocean-deep-800 p-8 rounded-xl shadow-2xl">
+                <h2 class="text-3xl font-bold text-copper-400 mb-6 text-center">Add a New Book</h2>
+                <div id="form-message" class="text-center mb-4 text-copper-300"></div>
+                <form id="add-book-form">
+                    <div class="mb-4">
+                        <label for="title" class="block text-copper-400 text-sm font-bold mb-2">Book Title</label>
+                        <input type="text" id="title" name="title" required class="w-full bg-ocean-deep-900 border-2 border-ocean-deep-700 rounded-lg py-2 px-3 text-gray-200 focus:outline-none focus:border-copper-500 transition-colors" placeholder="e.g., The Hobbit">
+                    </div>
+                    <div class="mb-4">
+                        <label for="author" class="block text-copper-400 text-sm font-bold mb-2">Author</label>
+                        <input type="text" id="author" name="author" required class="w-full bg-ocean-deep-900 border-2 border-ocean-deep-700 rounded-lg py-2 px-3 text-gray-200 focus:outline-none focus:border-copper-500 transition-colors" placeholder="e.g., J.R.R. Tolkien">
+                    </div>
+                    <div class="mb-4">
+                        <label for="barcode" class="block text-copper-400 text-sm font-bold mb-2">Barcode (ISBN)</label>
+                        <input type="text" id="barcode" name="barcode" class="w-full bg-ocean-deep-900 border-2 border-ocean-deep-700 rounded-lg py-2 px-3 text-gray-200 focus:outline-none focus:border-copper-500 transition-colors" placeholder="e.g., 978-0-345-33968-3">
+                    </div>
+                    <div class="mb-4">
+                        <label for="condition" class="block text-copper-400 text-sm font-bold mb-2">Condition</label>
+                        <input type="text" id="condition" name="condition" class="w-full bg-ocean-deep-900 border-2 border-ocean-deep-700 rounded-lg py-2 px-3 text-gray-200 focus:outline-none focus:border-copper-500 transition-colors" placeholder="e.g., Good, Like New">
+                    </div>
+                    <div class="mb-4">
+                        <label for="releaseYear" class="block text-copper-400 text-sm font-bold mb-2">Release Year</label>
+                        <input type="number" id="releaseYear" name="releaseYear" class="w-full bg-ocean-deep-900 border-2 border-ocean-deep-700 rounded-lg py-2 px-3 text-gray-200 focus:outline-none focus:border-copper-500 transition-colors" placeholder="e.g., 1937">
+                    </div>
+                    <div class="mb-6">
+                        <label for="review" class="block text-copper-400 text-sm font-bold mb-2">Short Review</label>
+                        <textarea id="review" name="review" class="w-full bg-ocean-deep-900 border-2 border-ocean-deep-700 rounded-lg py-2 px-3 text-gray-200 focus:outline-none focus:border-copper-500 transition-colors h-24 resize-none" placeholder="A brief summary or your thoughts..."></textarea>
+                    </div>
+                    <button type="submit" class="w-full bg-copper-600 hover:bg-copper-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-all transform hover:scale-105">
+                        Add Book to Collection
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- View Collection Page -->
+        <div id="page-view" class="page">
+            <div class="max-w-4xl mx-auto">
+                <h2 class="text-3xl font-bold text-copper-400 mb-6 text-center">My Book Collection</h2>
+
+                <div class="flex flex-col sm:flex-row gap-4 mb-6">
+                    <button id="import-btn" class="flex-1 bg-ocean-deep-700 hover:bg-ocean-deep-800 text-copper-300 font-bold py-2 px-4 rounded-lg transition-colors">Import from JSON File</button>
+                    <button id="export-btn" class="flex-1 bg-copper-600 hover:bg-copper-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">Export to JSON File</button>
+                </div>
+
+                <div class="mb-6">
+                    <input type="text" id="search-bar" placeholder="Search by author or title..." class="w-full bg-ocean-deep-800 border-2 border-ocean-deep-700 rounded-lg py-2 px-4 text-gray-200 focus:outline-none focus:border-copper-500 transition-colors">
+                </div>
+                <div id="book-list" class="space-y-4">
+                    <!-- Book items will be inserted here by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="text-center mt-12 text-sm text-ocean-deep-700">
+        <p>Book Catalog - Local JSON Version</p>
+        <p class="mt-2 text-xs">Remember to export your collection to save a portable backup!</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- CONSTANTS & STATE ---
+            const STORAGE_KEY = 'bookCollection';
+            let allBooks = [];
+
+            // --- DOM ELEMENTS ---
+            const navAdd = document.getElementById('nav-add');
+            const navView = document.getElementById('nav-view');
+            const pageAdd = document.getElementById('page-add');
+            const pageView = document.getElementById('page-view');
+            const addBookForm = document.getElementById('add-book-form');
+            const formMessage = document.getElementById('form-message');
+            const bookListContainer = document.getElementById('book-list');
+            const searchBar = document.getElementById('search-bar');
+            const importBtn = document.getElementById('import-btn');
+            const exportBtn = document.getElementById('export-btn');
+
+            // --- DATA HANDLING ---
+
+            // Load books from localStorage on startup
+            function loadBooksFromStorage() {
+                const storedBooks = localStorage.getItem(STORAGE_KEY);
+                if (storedBooks) {
+                    allBooks = JSON.parse(storedBooks);
+                }
+            }
+
+            // Save books to localStorage
+            function saveBooksToStorage() {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(allBooks));
+            }
+
+            // Render books to the list
+            function renderBooks(books) {
+                // Sort books by author, then title
+                const sortedBooks = [...books].sort((a, b) => {
+                    if (a.author.toLowerCase() < b.author.toLowerCase()) return -1;
+                    if (a.author.toLowerCase() > b.author.toLowerCase()) return 1;
+                    return a.title.toLowerCase().localeCompare(b.title.toLowerCase());
+                });
+
+                bookListContainer.innerHTML = ''; // Clear existing list
+                if (sortedBooks.length === 0) {
+                    bookListContainer.innerHTML = `<p class="text-center text-gray-400">Your collection is empty. Add a book or import a collection.</p>`;
+                    return;
+                }
+                sortedBooks.forEach(book => {
+                    const bookElement = document.createElement('div');
+                    bookElement.className = 'bg-ocean-deep-800 p-5 rounded-xl shadow-lg transition-all duration-300';
+                    bookElement.innerHTML = `
+                        <div class="flex justify-between items-center cursor-pointer toggle-header">
+                            <div>
+                                <h3 class="text-xl font-bold text-copper-400">${book.title}</h3>
+                                <p class="text-copper-300">by ${book.author}</p>
+                            </div>
+                            <svg class="w-6 h-6 text-copper-400 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </div>
+                        <div class="mt-4 pt-4 border-t border-ocean-deep-700 text-gray-300 space-y-2 hidden">
+                            <p><strong>Condition:</strong> ${book.condition || 'N/A'}</p>
+                            <p><strong>Release Year:</strong> ${book.releaseYear || 'N/A'}</p>
+                            <p><strong>Barcode/ISBN:</strong> ${book.barcode || 'N/A'}</p>
+                            <p><strong>Review:</strong> ${book.review || 'No review added.'}</p>
+                            <button class="delete-btn mt-3 px-4 py-1 bg-red-900 hover:bg-red-700 text-red-200 text-sm font-semibold rounded-lg transition-colors">Remove from Collection</button>
+                        </div>
+                    `;
+                    // Toggle details view
+                    bookElement.querySelector('.toggle-header').addEventListener('click', () => {
+                        bookElement.querySelector('.toggle-header svg').classList.toggle('rotate-180');
+                        bookElement.querySelector('.mt-4').classList.toggle('hidden');
+                    });
+                    // Delete book
+                    bookElement.querySelector('.delete-btn').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        allBooks = allBooks.filter(b => b.id !== book.id);
+                        saveBooksToStorage();
+                        renderBooks(allBooks);
+                    });
+                    bookListContainer.appendChild(bookElement);
+                });
+            }
+
+            // --- NAVIGATION LOGIC ---
+            function showPage(pageId) {
+                document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+                document.getElementById(pageId).classList.add('active');
+
+                navAdd.classList.toggle('bg-copper-600', pageId === 'page-add');
+                navAdd.classList.toggle('text-white', pageId === 'page-add');
+                navView.classList.toggle('bg-copper-600', pageId === 'page-view');
+                navView.classList.toggle('text-white', pageId === 'page-view');
+
+                if (pageId === 'page-view') {
+                    renderBooks(allBooks);
+                }
+            }
+
+            // --- EVENT LISTENERS ---
+            navAdd.addEventListener('click', () => showPage('page-add'));
+            navView.addEventListener('click', () => showPage('page-view'));
+
+            addBookForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const formData = new FormData(addBookForm);
+                const bookData = {
+                    id: Date.now(), // Simple unique ID
+                    ...Object.fromEntries(formData.entries())
+                };
+
+                allBooks.push(bookData);
+                saveBooksToStorage();
+
+                formMessage.textContent = 'Book added successfully!';
+                formMessage.style.color = 'var(--copper-300)';
+                addBookForm.reset();
+                setTimeout(() => formMessage.textContent = '', 3000);
+            });
+
+            searchBar.addEventListener('input', (e) => {
+                const searchTerm = e.target.value.toLowerCase();
+                const filteredBooks = allBooks.filter(book =>
+                    book.author.toLowerCase().includes(searchTerm) ||
+                    book.title.toLowerCase().includes(searchTerm)
+                );
+                renderBooks(filteredBooks);
+            });
+
+            exportBtn.addEventListener('click', () => {
+                if (allBooks.length === 0) {
+                    alert('Your collection is empty. There is nothing to export.');
+                    return;
+                }
+                const jsonString = JSON.stringify(allBooks, null, 2);
+                const blob = new Blob([jsonString], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'books.json';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+
+            importBtn.addEventListener('click', () => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.json,application/json';
+                input.onchange = e => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    const reader = new FileReader();
+                    reader.onload = event => {
+                        try {
+                            const importedBooks = JSON.parse(event.target.result);
+                            // Basic validation
+                            if (Array.isArray(importedBooks)) {
+                                if (confirm('This will overwrite your current collection. Are you sure?')) {
+                                    allBooks = importedBooks;
+                                    saveBooksToStorage();
+                                    renderBooks(allBooks);
+                                    alert(`Successfully imported ${allBooks.length} books.`);
+                                }
+                            } else {
+                                throw new Error('Invalid file format.');
+                            }
+                        } catch (err) {
+                            alert('Error reading or parsing file. Please make sure it is a valid book collection JSON file.');
+                            console.error(err);
+                        }
+                    };
+                    reader.readAsText(file);
+                };
+                input.click();
+            });
+
+            // --- INITIALIZATION ---
+            loadBooksFromStorage();
+            showPage('page-add');
+        });
+    </script>
+</body>
+</html>

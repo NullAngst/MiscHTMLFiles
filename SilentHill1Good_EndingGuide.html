@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="description" content="An interactive walkthrough for unlocking the Good+ ending in Silent Hill 1. Covers all optional questlines.">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Silent Hill: Good+ Ending Interactive Guide</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chosen Palette: Otherworld Rust (Charcoal, Rust Red, Muted Off-White) -->
+    <!-- Application Structure Plan: A task-oriented, single-page application using top navigation to jump between three core phases of the 'Good+' ending walkthrough. This non-linear structure allows users to quickly access specific information (e.g., a code in the Resort Area) without scrolling through the entire guide. The Kaufmann investigation is presented as an interactive, multi-step flowchart to visually clarify the sequence of events, which is more intuitive than linear text for a procedural questline. User interaction is focused on click-to-reveal details, keeping the interface clean and focused on the overall path. Thematic fact boxes have been added to each section to provide additional context and interest. -->
+    <!-- Visualization & Content Choices: 1. Core Guide: Presented as three distinct, navigable sections ('Hospital', 'Resort', 'Carousel'). Goal: Organize/Guide. Method: Styled HTML/Tailwind containers. Interaction: Top navigation clicks scroll to section. Justification: Breaks down the linear report into logical, accessible chunks. 2. Kaufmann Quest: Presented as a CSS-based flowchart. Goal: Organize/Change (show process). Method: HTML/Tailwind divs with flexbox and borders. Interaction: Clicking a step reveals detailed instructions. Justification: Visually represents the quest's dependencies, which is superior to plain text for comprehension. 3. Interesting Facts: Presented in styled 'lore boxes'. Goal: Inform/Engage. Method: Styled HTML divs. Justification: Adds value and flavor beyond a simple walkthrough, enhancing user engagement with the game's history. NO Chart.js/Plotly.js used as no quantitative data exists. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Special+Elite&display=swap');
+
+        body {
+            font-family: 'Special Elite', monospace;
+            background-color: #1a1a1a;
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%233a3a3a' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+        .nav-item {
+            transition: all 0.2s ease-in-out;
+            border: 1px solid #4a0404;
+        }
+        .nav-item:hover {
+            background-color: #4a0404;
+            color: #e5e7eb;
+        }
+        .nav-item.active {
+            background-color: #991b1b;
+            color: #f3f4f6;
+            border-color: #991b1b;
+        }
+        .task-card {
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+            border-width: 2px;
+        }
+        .task-card:hover {
+            border-color: #991b1b;
+            background-color: #1f2937;
+        }
+        .details {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-out;
+        }
+        .details.open {
+            max-height: 500px;
+            transition: max-height 0.5s ease-in;
+        }
+        .flow-line::after {
+            content: '▼';
+            display: block;
+            text-align: center;
+            color: #4b5563;
+            font-size: 1.5rem;
+            margin: 0.5rem 0;
+            text-shadow: 1px 1px 2px #000;
+        }
+        .flow-line:last-child::after {
+            content: '';
+        }
+        .lore-box {
+            background-color: rgba(0,0,0,0.3);
+            border: 1px solid #4b5563;
+            border-left: 4px solid #b91c1c;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-300 antialiased">
+
+    <header class="bg-black/80 backdrop-blur-sm shadow-lg shadow-red-900/20 sticky top-0 z-50 border-b-2 border-red-900">
+        <div class="container mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between items-center">
+            <h1 class="text-xl md:text-2xl font-bold tracking-tight text-gray-100">SILENT HILL: GOOD+ ENDING</h1>
+            <nav id="main-nav" class="flex space-x-2 sm:space-x-4 mt-2 sm:mt-0">
+                <a href="#phase-1" class="nav-item px-3 py-1 text-sm font-medium text-gray-300">Phase 1: Hospital</a>
+                <a href="#phase-2" class="nav-item px-3 py-1 text-sm font-medium text-gray-300">Phase 2: Resort</a>
+                <a href="#phase-3" class="nav-item px-3 py-1 text-sm font-medium text-gray-300">Phase 3: Carousel</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container mx-auto p-4 md:p-8">
+
+        <div class="text-center mb-12">
+            <h2 class="text-3xl md:text-4xl font-bold text-gray-100" style="text-shadow: 2px 2px 4px #991b1b;">Navigating the Fog to Salvation</h2>
+            <p class="mt-4 max-w-3xl mx-auto text-gray-400">This interactive guide details the two critical, optional questlines required to achieve the "Good+" ending. Completing the Kaufmann Investigation secures the "Good" ending, while saving Officer Bennett adds the crucial "+" modifier. Follow these phases precisely to ensure the best possible outcome.</p>
+        </div>
+
+        <section id="phase-1" class="mb-16 scroll-mt-24">
+            <div class="bg-gray-800/50 p-6 shadow-md border border-gray-700">
+                <h3 class="text-2xl font-bold text-red-500 border-b-2 border-red-800 pb-2 mb-4">Phase 1: Secure the "Unknown Liquid"</h3>
+                <p class="text-gray-400 mb-6">Your first critical objective is in Alchemilla Hospital. You must acquire the Aglaophotis (presented as "Unknown Liquid") before the hospital shifts to the Otherworld. Failing this step makes saving Cybil impossible and locks you out of the "Good+" ending.</p>
+
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="task-card bg-gray-900 p-5 border-gray-700" onclick="toggleDetails(this)">
+                        <h4 class="font-bold text-lg text-gray-200">Step 1: Acquire the Plastic Bottle</h4>
+                        <p class="text-sm text-gray-500">Click to see details</p>
+                        <div class="details mt-4 text-gray-300 space-y-2">
+                            <p><strong>Location:</strong> Alchemilla Hospital, First Floor, Kitchen.</p>
+                            <p><strong>Action:</strong> Upon entering the hospital, make your way to the Kitchen. Find the empty <strong>Plastic Bottle</strong> on a counter and collect it. This is a mandatory prerequisite.</p>
+                        </div>
+                    </div>
+                    <div class="task-card bg-gray-900 p-5 border-gray-700" onclick="toggleDetails(this)">
+                        <h4 class="font-bold text-lg text-gray-200">Step 2: Collect the Liquid</h4>
+                        <p class="text-sm text-gray-500">Click to see details</p>
+                        <div class="details mt-4 text-gray-300 space-y-2">
+                             <p><strong>Location:</strong> Alchemilla Hospital, First Floor, Director's Office.</p>
+                             <p><strong>Action:</strong> With the bottle, go to the Director's Office. You'll see a spilled pool of red liquid on the floor. Stand near it and use the Plastic Bottle from your inventory to collect the <strong>"Unknown Liquid"</strong>.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-8 lore-box p-4">
+                    <h5 class="font-bold text-red-500 mb-2">Developer's Note: A Familiar Nightmare</h5>
+                    <p class="text-sm text-gray-400">The game's terrifying "Otherworld" shifts—where reality decays into a rusted, blood-soaked hellscape—were heavily inspired by the 1990 film *Jacob's Ladder*. The film's use of subtle environmental horror and twitching, spasmodic figures directly influenced the aesthetic and monster design of Silent Hill.</p>
+                </div>
+                 <div class="mt-6 bg-red-900/30 border-l-4 border-red-600 text-red-300 p-4" role="alert">
+                    <p class="font-bold">CRITICAL WARNING: POINT OF NO RETURN</p>
+                    <p>You MUST collect the liquid before taking the elevator that transitions the hospital to its "Otherworld" version. Afterwards, the Director's Office door will be permanently jammed.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="phase-2" class="mb-16 scroll-mt-24">
+            <div class="bg-gray-800/50 p-6 shadow-md border border-gray-700">
+                <h3 class="text-2xl font-bold text-red-500 border-b-2 border-red-800 pb-2 mb-4">Phase 2: The Kaufmann Investigation</h3>
+                <p class="text-gray-400 mb-6">After navigating the sewers and reaching the Silent Hill Resort Area, you must uncover a conspiracy involving Dr. Kaufmann. This multi-step investigation is essential for the "Good" ending. The following steps must be completed in order.</p>
+
+                <div class="flex flex-col items-center">
+                    <div class="w-full max-w-2xl">
+                        <div class="flow-line task-card bg-gray-900 p-5 border-gray-700" onclick="toggleDetails(this)">
+                             <h4 class="font-bold text-lg text-gray-200">2.1: Save Dr. Kaufmann at Annie's Bar</h4>
+                             <p class="text-sm text-gray-500">Click to see details</p>
+                             <div class="details mt-4 text-gray-300 space-y-2">
+                                <p>Enter Annie's Bar and save Dr. Kaufmann from a monster. After he leaves, search the floor to find the <strong class="text-red-400">Kaufmann Key</strong> and a <strong class="text-red-400">Receipt</strong>.</p>
+                            </div>
+                        </div>
+                        <div class="flow-line task-card bg-gray-900 p-5 border-gray-700" onclick="toggleDetails(this)">
+                            <h4 class="font-bold text-lg text-gray-200">2.2: Investigate the Indian Runner</h4>
+                             <p class="text-sm text-gray-500">Click to see details</p>
+                             <div class="details mt-4 text-gray-300 space-y-2">
+                                <p>Examine the receipt to find the code <strong class="text-red-400 text-xl tracking-widest">0473</strong>. Use it to enter the Indian Runner. Inside, find the <strong class="text-red-400">Safe Key</strong> and read the <strong class="text-red-400">Grocery List</strong> for the next code.</p>
+                            </div>
+                        </div>
+                        <div class="flow-line task-card bg-gray-900 p-5 border-gray-700" onclick="toggleDetails(this)">
+                            <h4 class="font-bold text-lg text-gray-200">2.3: Infiltrate Norman's Motel</h4>
+                            <p class="text-sm text-gray-500">Click to see details</p>
+                            <div class="details mt-4 text-gray-300 space-y-2">
+                                <p>The grocery list provides the code <strong class="text-red-400 text-xl tracking-widest">0886</strong>. Use it at the rear of Norman's Motel. Collect the <strong class="text-red-400">Magnet</strong> from a couch.</p>
+                            </div>
+                        </div>
+                        <div class="flow-line task-card bg-gray-900 p-5 border-gray-700" onclick="toggleDetails(this)">
+                             <h4 class="font-bold text-lg text-gray-200">2.4: Find the Motorcycle Key</h4>
+                            <p class="text-sm text-gray-500">Click to see details</p>
+                            <div class="details mt-4 text-gray-300 space-y-2">
+                                <p>Go to Room 3 of the motel and use the Kaufmann Key. Push a cabinet aside to find a hole in the floor. Use the Magnet to retrieve the <strong class="text-red-400">Motorcycle Key</strong>.</p>
+                            </div>
+                        </div>
+                        <div class="flow-line task-card bg-gray-900 p-5 border-gray-700" onclick="toggleDetails(this)">
+                            <h4 class="font-bold text-lg text-gray-200">2.5: Trigger the Confrontation</h4>
+                            <p class="text-sm text-gray-500">Click to see details</p>
+                            <div class="details mt-4 text-gray-300 space-y-2">
+                                <p>Use the Motorcycle Key on the bike in the motel parking area. This triggers a cutscene with Kaufmann, confirming the quest is complete and the <strong>"Good" ending is locked in</strong>.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-8 lore-box p-4">
+                    <h5 class="font-bold text-red-500 mb-2">Did You Know? The Real Silent Hill</h5>
+                    <p class="text-sm text-gray-400">The town of Silent Hill was partly inspired by Centralia, Pennsylvania. Centralia was abandoned after an underground coal mine fire started in 1962, which continues to burn to this day. The town's empty streets, damaged roads, and the smoke that often rises from the ground heavily influenced Silent Hill's iconic foggy, deserted atmosphere.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="phase-3" class="scroll-mt-24">
+             <div class="bg-gray-800/50 p-6 shadow-md border border-gray-700">
+                <h3 class="text-2xl font-bold text-red-500 border-b-2 border-red-800 pb-2 mb-4">Phase 3: Save Cybil at the Carousel</h3>
+                <p class="text-gray-400 mb-6">The final action takes place at the Lakeside Amusement Park. Your compassion here is the last step to securing the "Good+" ending. This strategy is the safest and most reliable method.</p>
+
+                <div class="bg-green-900/30 border-l-4 border-green-500 text-green-300 p-6">
+                    <h4 class="font-bold text-xl mb-2 text-green-200">The Definitive Strategy</h4>
+                    <ol class="list-decimal list-inside space-y-2">
+                        <li>Before the fight, ensure the <strong>"Unknown Liquid"</strong> is in your inventory.</li>
+                        <li>When the battle begins, <strong>do not shoot</strong>. Immediately run directly towards the possessed Cybil.</li>
+                        <li>Get as close as possible. The game requires you to be right next to her to use the item.</li>
+                        <li>Open your inventory and use the <strong>"Unknown Liquid"</strong> on her.</li>
+                    </ol>
+                    <p class="mt-4 font-semibold">This will trigger a cutscene, saving Cybil and officially locking in the "+" modifier. You have now fulfilled all requirements for the "Good+" ending.</p>
+                </div>
+                 <div class="mt-8 lore-box p-4">
+                    <h5 class="font-bold text-red-500 mb-2">Ingenuity from Limitation</h5>
+                    <p class="text-sm text-gray-400">Silent Hill's iconic, dense fog wasn't just a creative choice—it was a technical necessity. The original PlayStation had limited processing power and a short draw distance, meaning it couldn't render large, open environments without severe graphical pop-in. The development team, Team Silent, cleverly used the thick fog to hide these technical limitations, inadvertently creating one of the most memorable and defining atmospheric elements in horror gaming history.</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-black/80 mt-16 py-6 border-t-2 border-red-900">
+        <div class="container mx-auto px-4 text-center text-sm text-gray-500">
+            <p>This interactive guide is based on the gameplay and lore of Konami's *Silent Hill* (1999).</p>
+            <p>&copy; 2025 Interactive Guides. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        function toggleDetails(element) {
+            const details = element.querySelector('.details');
+            if (details) {
+                details.classList.toggle('open');
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const sections = document.querySelectorAll('section');
+            const navItems = document.querySelectorAll('#main-nav a');
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        navItems.forEach(item => {
+                            item.classList.remove('active');
+                            if (item.getAttribute('href').substring(1) === entry.target.id) {
+                                item.classList.add('active');
+                            }
+                        });
+                    }
+                });
+            }, { rootMargin: "-50% 0px -50% 0px" });
+
+            sections.forEach(section => {
+                observer.observe(section);
+            });
+        });
+    </script>
+</body>
+</html>

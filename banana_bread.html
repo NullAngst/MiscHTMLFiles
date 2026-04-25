@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="description" content="An interactive banana bread recipe with batch scaling, step-by-step instructions, and data-driven moisture science.">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Gooey: The Ultimate Banana Bread v2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Custom Font Import */
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Playfair+Display:wght@700&display=swap');
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background-color: #FDFBF7; /* Creamy off-white */
+            color: #4A3B32; /* Dark Chocolate Brown */
+        }
+
+        h1, h2, h3, .serif {
+            font-family: 'Playfair Display', serif;
+        }
+
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            height: 300px;
+            margin: 0 auto;
+        }
+
+        .active-tab {
+            border-bottom: 3px solid #D97706; /* Amber-600 */
+            color: #D97706;
+            font-weight: bold;
+        }
+
+        .step-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .step-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .step-completed {
+            background-color: #FEF3C7; /* Amber-100 */
+            border-left: 4px solid #D97706;
+            opacity: 0.8;
+        }
+
+        .mini-ingredient-list {
+            background-color: rgba(255,255,255,0.6);
+            border-radius: 0.5rem;
+            margin-top: 0.75rem;
+            padding: 0.5rem;
+            border: 1px dashed #D6D3D1;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #FDFBF7;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #D6D3D1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #A8A29E;
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex flex-col">
+
+    <header class="w-full bg-[#EBE5DE] py-12 px-6 text-center border-b border-[#D6D3D1]">
+        <div class="max-w-4xl mx-auto">
+            <span class="text-[#D97706] uppercase tracking-widest text-xs font-bold mb-2 block">The Definitive Analysis</span>
+            <h1 class="text-4xl md:text-6xl text-[#4A3B32] mb-4">Project: <span class="italic text-[#D97706]">Gooey</span></h1>
+            <p class="text-lg md:text-xl text-[#786657] max-w-2xl mx-auto leading-relaxed">
+                A data-driven approach to the perfect chocolate pecan banana bread.
+                <br>
+                <span class="font-bold">Result:</span> 60% Banana Content. 100% Texture.
+            </p>
+        </div>
+    </header>
+
+    <nav class="sticky top-0 z-50 bg-[#FDFBF7]/95 backdrop-blur-sm border-b border-[#E7E5E4] shadow-sm">
+        <div class="max-w-5xl mx-auto px-4">
+            <div class="flex justify-center space-x-8 md:space-x-16">
+                <button onclick="switchTab('technique')" id="tab-technique" class="nav-btn active-tab py-4 text-sm md:text-base font-medium transition-colors hover:text-[#D97706]">The Process</button>
+                <button onclick="switchTab('science')" id="tab-science" class="nav-btn py-4 text-sm md:text-base font-medium text-[#786657] transition-colors hover:text-[#D97706]">The Science</button>
+                <button onclick="switchTab('blueprint')" id="tab-blueprint" class="nav-btn py-4 text-sm md:text-base font-medium text-[#786657] transition-colors hover:text-[#D97706]">Shopping List</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow container mx-auto px-4 py-8 max-w-5xl">
+
+        <div id="global-controls" class="bg-white p-4 rounded-xl shadow-sm border border-[#E7E5E4] mb-8 max-w-xl mx-auto text-center sticky top-20 z-40 transition-all">
+            <div class="flex justify-between items-center mb-2 px-2">
+                <label for="yieldSlider" class="text-sm font-bold text-[#4A3B32] uppercase tracking-wide">Batch Size</label>
+                <div class="text-lg font-serif font-bold text-[#D97706]">
+                    <span id="loafCount">1</span> Loaf (<span id="sliceCount">10</span> Slices)
+                </div>
+            </div>
+            <input type="range" id="yieldSlider" min="1" max="3" step="1" value="1" class="w-full h-2 bg-[#E7E5E4] rounded-lg appearance-none cursor-pointer accent-[#D97706]">
+        </div>
+
+        <section id="section-technique" class="animate-fade-in">
+            <div class="mb-8 text-center max-w-2xl mx-auto">
+                <h2 class="text-3xl mb-3 text-[#4A3B32]">The Execution</h2>
+                <p class="text-[#786657]">
+                    Ingredients are listed within each step so you don't have to scroll.
+                </p>
+            </div>
+
+            <div class="space-y-4 max-w-3xl mx-auto" id="stepsContainer">
+                </div>
+        </section>
+
+        <section id="section-science" class="hidden animate-fade-in">
+            <div class="mb-8 text-center max-w-2xl mx-auto">
+                <h2 class="text-3xl mb-3 text-[#4A3B32]">The Physics of "Gooey"</h2>
+                <p class="text-[#786657]">
+                    Most banana breads are dry cakes in disguise. We prioritize moisture retention through a high "Wet-to-Dry" ratio.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-[#E7E5E4]">
+                    <h3 class="text-xl font-bold mb-2">The Moisture Ratio</h3>
+                    <div class="chart-container">
+                        <canvas id="ratioChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-[#E7E5E4]">
+                    <h3 class="text-xl font-bold mb-2">The Sweet Spot: Ripeness</h3>
+                    <div class="chart-container">
+                        <canvas id="ripenessChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="section-blueprint" class="hidden animate-fade-in">
+            <div class="mb-8 text-center max-w-2xl mx-auto">
+                <h2 class="text-3xl mb-3 text-[#4A3B32]">Master Shopping List</h2>
+                <p class="text-[#786657]">
+                    A complete inventory of what you need for the current batch size.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="space-y-4">
+                    <h3 class="text-xl font-bold border-b border-[#D97706] pb-2 text-[#4A3B32]">The Wet (Moisture)</h3>
+                    <ul class="space-y-3" id="wetList">
+                        </ul>
+                </div>
+
+                <div class="space-y-4">
+                    <h3 class="text-xl font-bold border-b border-[#4A3B32] pb-2 text-[#4A3B32]">The Dry (Structure)</h3>
+                    <ul class="space-y-3" id="dryList">
+                        </ul>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-[#EBE5DE] py-8 text-center text-[#786657] text-sm mt-12">
+        <p class="mb-2 font-bold">Project Gooey v2.1</p>
+        <p>Synthesized from global culinary data.</p>
+        <div class="mt-4 flex justify-center space-x-2">
+            <span class="inline-block w-3 h-3 rounded-full bg-[#4A3B32]"></span>
+            <span class="inline-block w-3 h-3 rounded-full bg-[#D97706]"></span>
+            <span class="inline-block w-3 h-3 rounded-full bg-[#F59E0B]"></span>
+        </div>
+    </footer>
+
+    <script>
+        // --- DATA & STATE MANAGEMENT ---
+        const state = {
+            multiplier: 1,
+            completedSteps: []
+        };
+
+        const baseIngredients = {
+            wet: [
+                { name: "Very Ripe Bananas", amount: 5, unit: "whole", note: "Brown/Black spots essential. Mashed (approx 2.5 cups)." },
+                { name: "Unsalted Butter", amount: 0.5, unit: "cup", note: "Melted and slightly cooled." },
+                { name: "Brown Sugar", amount: 0.75, unit: "cup", note: "Packed. Provides moisture." },
+                { name: "Granulated Sugar", amount: 0.25, unit: "cup", note: "For edges." },
+                { name: "Large Egg", amount: 1, unit: "whole", note: "Room temp." },
+                { name: "Egg Yolk", amount: 1, unit: "whole", note: "Extra fat for richness." },
+                { name: "Vanilla Extract", amount: 1, unit: "Tbsp", note: "Increased for depth (approx 3 tsp)." }
+            ],
+            dry: [
+                { name: "All-Purpose Flour", amount: 1.5, unit: "cups", note: "Do not pack. Spoon & level." },
+                { name: "Baking Soda", amount: 1, unit: "tsp", note: "Reacts with acidity." },
+                { name: "Salt", amount: 0.5, unit: "tsp", note: "Balances sweet." },
+                { name: "Semi-Sweet Chocolate", amount: 6, unit: "oz", note: "Chopped from a bar (chunks)." },
+                { name: "Crushed Pecans", amount: 0.5, unit: "cup", note: "Toasted lightly for best flavor." }
+            ]
+        };
+
+        // Steps now include a list of ingredient names needed for that step
+        const steps = [
+            {
+                title: "Prep the Oven",
+                desc: "Preheat oven to 350°F (175°C). Grease a 9x5-inch loaf pan with butter.",
+                ingredients: []
+            },
+            {
+                title: "The Mash (Crucial)",
+                desc: "Mash the bananas in a large bowl. Don't puree them completely—leave small chunks for texture pockets.",
+                ingredients: ["Very Ripe Bananas"]
+            },
+            {
+                title: "The Emulsion",
+                desc: "Stir the melted butter into the mashed bananas. Whisk in sugars, egg, egg yolk, and vanilla until completely combined.",
+                ingredients: ["Unsalted Butter", "Brown Sugar", "Granulated Sugar", "Large Egg", "Egg Yolk", "Vanilla Extract"]
+            },
+            {
+                title: "The Dry Mix",
+                desc: "In a separate small bowl, whisk together flour, baking soda, and salt.",
+                ingredients: ["All-Purpose Flour", "Baking Soda", "Salt"]
+            },
+            {
+                title: "The Fold (Do Not Overmix)",
+                desc: "Pour dry ingredients into wet. Switch to a spatula. Fold GENTLY until just a few flour streaks remain. Do not whisk.",
+                ingredients: []
+            },
+            {
+                title: "The Mix-ins",
+                desc: "Fold in the chocolate chunks and pecans. Stop mixing immediately once incorporated.",
+                ingredients: ["Semi-Sweet Chocolate", "Crushed Pecans"]
+            },
+            {
+                title: "The Bake",
+                desc: "Pour into the prepared pan. Bake for 55-65 minutes. Top should be dark golden brown.",
+                ingredients: []
+            },
+            {
+                title: "The Test",
+                desc: "Insert a toothpick. For 'Project Gooey', it should NOT come out clean. It should have moist crumbs attached (but no raw batter).",
+                ingredients: []
+            },
+            {
+                title: "The Patience",
+                desc: "Cool in pan for 10 mins, then transfer to wire rack. Wait at least 45 minutes before slicing to allow structure to set.",
+                ingredients: []
+            }
+        ];
+
+        // --- HELPER FUNCTIONS ---
+        function formatAmount(amount) {
+             // Handle scaling logic
+             let scaled = amount * state.multiplier;
+
+             // Round to reasonable decimals for clean display
+             if (Math.abs(scaled - Math.round(scaled)) < 0.1) {
+                 return Math.round(scaled);
+             }
+             return scaled.toFixed(2).replace(/\.00$/, '').replace(/\.50$/, ' ½').replace(/\.25$/, ' ¼').replace(/\.75$/, ' ¾');
+        }
+
+        function findIngredient(name) {
+            let ing = baseIngredients.wet.find(i => i.name === name);
+            if (!ing) ing = baseIngredients.dry.find(i => i.name === name);
+            return ing;
+        }
+
+        // --- NAVIGATION LOGIC ---
+        function switchTab(tabId) {
+            document.getElementById('section-science').classList.add('hidden');
+            document.getElementById('section-blueprint').classList.add('hidden');
+            document.getElementById('section-technique').classList.add('hidden');
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('active-tab', 'text-[#D97706]');
+                btn.classList.add('text-[#786657]');
+            });
+
+            document.getElementById(`section-${tabId}`).classList.remove('hidden');
+
+            const activeBtn = document.getElementById(`tab-${tabId}`);
+            activeBtn.classList.add('active-tab', 'text-[#D97706]');
+            activeBtn.classList.remove('text-[#786657]');
+
+            if(tabId === 'science') {
+                window.dispatchEvent(new Event('resize'));
+            }
+        }
+
+        // --- RENDER LOGIC ---
+        function renderAll() {
+            renderIngredientsList();
+            renderSteps();
+        }
+
+        function renderIngredientsList() {
+            const wetList = document.getElementById('wetList');
+            const dryList = document.getElementById('dryList');
+            wetList.innerHTML = '';
+            dryList.innerHTML = '';
+
+            const createLi = (ing) => `
+                <li class="bg-white p-3 rounded shadow-sm border border-[#E7E5E4] flex justify-between items-center group">
+                    <div>
+                        <span class="font-bold text-lg text-[#D97706]">${formatAmount(ing.amount)} ${ing.unit}</span>
+                        <span class="text-[#4A3B32] font-medium ml-1">${ing.name}</span>
+                    </div>
+                    <div class="text-xs text-[#786657] opacity-0 group-hover:opacity-100 transition-opacity italic">
+                        ${ing.note}
+                    </div>
+                </li>
+            `;
+
+            baseIngredients.wet.forEach(ing => wetList.innerHTML += createLi(ing));
+            baseIngredients.dry.forEach(ing => dryList.innerHTML += createLi(ing));
+        }
+
+        function renderSteps() {
+            const container = document.getElementById('stepsContainer');
+            container.innerHTML = '';
+
+            steps.forEach((step, index) => {
+                const isCompleted = state.completedSteps.includes(index);
+
+                // Generate Ingredient Mini-List for this step
+                let ingHtml = '';
+                if (step.ingredients && step.ingredients.length > 0) {
+                    ingHtml = '<div class="mini-ingredient-list"><p class="text-xs font-bold uppercase text-[#D97706] mb-1">Add This:</p><ul class="text-sm space-y-1">';
+                    step.ingredients.forEach(ingName => {
+                        const ingData = findIngredient(ingName);
+                        if (ingData) {
+                            ingHtml += `<li class="flex justify-between border-b border-[#E7E5E4] border-dashed last:border-0 pb-1 last:pb-0">
+                                <span>${ingData.name}</span>
+                                <span class="font-bold font-mono">${formatAmount(ingData.amount)} ${ingData.unit}</span>
+                            </li>`;
+                        }
+                    });
+                    ingHtml += '</ul></div>';
+                }
+
+                container.innerHTML += `
+                    <div class="step-card bg-white p-4 rounded-xl border border-[#E7E5E4] flex items-start gap-4 ${isCompleted ? 'step-completed' : ''}" onclick="toggleStep(${index})">
+                        <div class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold border-2 ${isCompleted ? 'bg-[#D97706] border-[#D97706] text-white' : 'border-[#D6D3D1] text-[#A8A29E]'}">
+                            ${isCompleted ? '✓' : index + 1}
+                        </div>
+                        <div class="flex-grow">
+                            <h4 class="font-bold text-lg text-[#4A3B32] ${isCompleted ? 'line-through opacity-50' : ''}">${step.title}</h4>
+                            <p class="text-[#786657] ${isCompleted ? 'opacity-50' : ''}">${step.desc}</p>
+                            ${!isCompleted ? ingHtml : ''}
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function toggleStep(index) {
+            if (state.completedSteps.includes(index)) {
+                state.completedSteps = state.completedSteps.filter(i => i !== index);
+            } else {
+                state.completedSteps.push(index);
+            }
+            renderSteps();
+        }
+
+        document.getElementById('yieldSlider').addEventListener('input', (e) => {
+            state.multiplier = parseInt(e.target.value);
+            document.getElementById('loafCount').textContent = state.multiplier;
+            document.getElementById('sliceCount').textContent = state.multiplier * 10;
+            renderAll();
+        });
+
+        // --- CHART LOGIC ---
+        function initCharts() {
+            Chart.defaults.font.family = "'DM Sans', sans-serif";
+            Chart.defaults.color = '#786657';
+
+            new Chart(document.getElementById('ratioChart'), {
+                type: 'pie',
+                data: {
+                    labels: ['Wet Mass', 'Dry Mass', 'Sugar'],
+                    datasets: [{
+                        data: [55, 30, 15],
+                        backgroundColor: ['#F59E0B', '#E7E5E4', '#4A3B32'],
+                        borderWidth: 0
+                    }]
+                },
+                options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+            });
+
+            new Chart(document.getElementById('ripenessChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['Green', 'Yellow', 'Spotted', 'Black'],
+                    datasets: [{
+                        data: [2, 12, 16, 21],
+                        backgroundColor: ['#A3E635', '#FDE047', '#FBBF24', '#4A3B32'],
+                        borderRadius: 6
+                    }]
+                },
+                options: { responsive: true, scales: { y: { beginAtZero: true } }, plugins: { legend: { display: false } } }
+            });
+        }
+
+        // --- INITIALIZATION ---
+        window.onload = () => {
+            renderAll();
+            initCharts();
+        };
+
+    </script>
+</body>
+</html>

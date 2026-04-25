@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="description" content="A feature-rich Minesweeper with multiple themes, difficulty levels, and a classic 90s mode.">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Minesweeper Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@500;700&family=VT323&display=swap" rel="stylesheet">
+    <style>
+        /* --- Theme Variables --- */
+        :root {
+            /* Default (Deep Blurple) */
+            --bg-color: #0f0529;
+            --panel-bg: #1e1b4b;
+            --text-main: #e0e7ff;
+            --text-muted: #818cf8;
+            --accent: #c084fc;
+            --accent-hover: #d8b4fe;
+
+            --cell-size: 2rem;
+            --cell-closed: #312e81;
+            --cell-closed-hover: #4338ca;
+            --cell-revealed: #1e1b4b;
+            --grid-gap: 2px;
+            --grid-bg: #1e1b4b;
+
+            --font-main: 'Inter', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --radius: 0.5rem;
+            --shadow-ui: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            --modal-overlay: rgba(0, 0, 0, 0.85);
+        }
+
+        [data-theme="light"] {
+            --bg-color: #f1f5f9;
+            --panel-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --accent: #0284c7;
+            --accent-hover: #38bdf8;
+
+            --cell-closed: #cbd5e1;
+            --cell-closed-hover: #94a3b8;
+            --cell-revealed: #e2e8f0;
+            --grid-bg: #cbd5e1;
+            --shadow-ui: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        [data-theme="90s"] {
+            --bg-color: #008080;
+            --panel-bg: #c0c0c0;
+            --text-main: #000000;
+            --text-muted: #404040;
+            --accent: #000080;
+            --accent-hover: #0000ff;
+
+            --cell-closed: #c0c0c0;
+            --cell-revealed: #c0c0c0;
+            --grid-gap: 0;
+            --grid-bg: #808080;
+
+            --font-main: 'VT323', monospace;
+            --font-mono: 'VT323', monospace;
+            --radius: 0;
+            --shadow-ui: none;
+            --modal-overlay: rgba(0,0,0,0.5);
+        }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            touch-action: manipulation;
+            overflow: hidden;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* --- Components --- */
+        .panel {
+            background-color: var(--panel-bg);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-ui);
+            transition: background-color 0.3s;
+        }
+
+        [data-theme="90s"] .panel {
+            border-top: 2px solid #fff;
+            border-left: 2px solid #fff;
+            border-right: 2px solid #808080;
+            border-bottom: 2px solid #808080;
+        }
+
+        /* Game Board */
+        #game-board {
+            display: grid;
+            gap: var(--grid-gap);
+            background-color: var(--grid-bg);
+            padding: var(--grid-gap);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-ui);
+            user-select: none;
+            margin: 0 auto;
+            width: max-content;
+        }
+
+        [data-theme="90s"] #game-board {
+            border-top: 3px solid #808080;
+            border-left: 3px solid #808080;
+            border-right: 3px solid #fff;
+            border-bottom: 3px solid #fff;
+            padding: 0;
+        }
+
+        /* Cells */
+        .cell {
+            width: var(--cell-size);
+            height: var(--cell-size);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1.2rem;
+            cursor: pointer;
+            border-radius: calc(var(--radius) / 2);
+            box-sizing: border-box;
+        }
+
+        /* Modern Styles */
+        body:not([data-theme="90s"]) .cell.closed {
+            background-color: var(--cell-closed);
+            box-shadow: inset 0 2px 0 rgba(255,255,255,0.1), inset 0 -2px 0 rgba(0,0,0,0.2);
+            transition: background-color 0.1s, transform 0.05s;
+        }
+        body:not([data-theme="90s"]) .cell.closed:hover {
+            background-color: var(--cell-closed-hover);
+        }
+        body:not([data-theme="90s"]) .cell.closed:active {
+            transform: scale(0.95);
+        }
+        body:not([data-theme="90s"]) .cell.revealed {
+            background-color: var(--cell-revealed);
+            cursor: default;
+        }
+
+        /* 90s Styles - Classic Bevel */
+        [data-theme="90s"] .cell.closed {
+            background-color: #c0c0c0;
+            border-top: 3px solid #ffffff;
+            border-left: 3px solid #ffffff;
+            border-right: 3px solid #808080;
+            border-bottom: 3px solid #808080;
+        }
+        [data-theme="90s"] .cell.closed:active {
+            border-top: 2px solid #808080;
+            border-left: 2px solid #808080;
+            border-right: 2px solid #808080;
+            border-bottom: 2px solid #808080;
+        }
+        [data-theme="90s"] .cell.revealed {
+            background-color: #c0c0c0;
+            border: 1px dotted #808080;
+            cursor: default;
+        }
+
+        /* Numbers */
+        .val-1 { color: #3b82f6; }
+        .val-2 { color: #10b981; }
+        .val-3 { color: #ef4444; }
+        .val-4 { color: #8b5cf6; }
+        .val-5 { color: #f97316; }
+        .val-6 { color: #06b6d4; }
+        .val-7 { color: #d946ef; }
+        .val-8 { color: #64748b; }
+
+        /* 90s Number Colors */
+        [data-theme="90s"] .val-1 { color: blue; }
+        [data-theme="90s"] .val-2 { color: green; }
+        [data-theme="90s"] .val-3 { color: red; }
+        [data-theme="90s"] .val-4 { color: darkblue; }
+        [data-theme="90s"] .val-5 { color: darkred; }
+        [data-theme="90s"] .val-6 { color: teal; }
+        [data-theme="90s"] .val-7 { color: black; }
+        [data-theme="90s"] .val-8 { color: gray; }
+
+        /* Animations */
+        @keyframes pop {
+            0% { transform: scale(0); opacity: 0; }
+            80% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .icon-pop { animation: pop 0.2s ease-out forwards; }
+
+        /* Overlays */
+        .modal-backdrop {
+            background: var(--modal-overlay);
+            backdrop-filter: blur(4px);
+        }
+        [data-theme="90s"] .modal-backdrop {
+            backdrop-filter: none;
+            background-image: radial-gradient(#000 15%, transparent 16%);
+            background-size: 4px 4px;
+        }
+
+        /* 90s Specific Button overrides */
+        [data-theme="90s"] button {
+            border-radius: 0;
+            background: #c0c0c0;
+            color: black;
+            border-top: 2px solid #fff;
+            border-left: 2px solid #fff;
+            border-right: 2px solid #404040;
+            border-bottom: 2px solid #404040;
+            box-shadow: none !important;
+            text-transform: uppercase;
+            font-family: 'VT323', monospace;
+        }
+        [data-theme="90s"] button:active, [data-theme="90s"] .active-option {
+            border-top: 2px solid #404040;
+            border-left: 2px solid #404040;
+            border-right: 2px solid #fff;
+            border-bottom: 2px solid #fff;
+            background: #e0e0e0;
+        }
+
+        .active-option {
+            background-color: var(--accent);
+            color: white !important;
+            opacity: 1 !important;
+            border-color: transparent;
+        }
+
+    </style>
+</head>
+<body data-theme="default" class="h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="panel z-10 p-3 shrink-0 border-b border-white/5 relative">
+        <div class="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-3">
+
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-xl" style="background-color: var(--accent);">
+                    💣
+                </div>
+                <h1 class="text-2xl font-bold tracking-tight">Minesweeper</h1>
+            </div>
+
+            <!-- Stats Bar -->
+            <div class="flex items-center gap-6 panel px-6 py-2">
+                <div class="flex items-center gap-3" title="Mines Remaining">
+                    <span class="text-2xl">🚩</span>
+                    <span id="mines-count" class="text-3xl font-mono text-red-400">010</span>
+                </div>
+                <div class="w-px h-8 bg-current opacity-20"></div>
+                <div class="flex items-center gap-3" title="Time Elapsed">
+                    <span class="text-2xl">⏱️</span>
+                    <span id="timer" class="text-3xl font-mono" style="color: var(--accent);">000</span>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="flex gap-2">
+                <button onclick="toggleSound()" id="btn-sound" class="p-2 panel hover:brightness-110 flex items-center gap-2 font-medium w-10 justify-center" title="Toggle Sound">
+                    🔇
+                </button>
+                <button onclick="openStartMenu()" class="p-2 panel hover:brightness-110 flex items-center gap-2 font-medium" title="New Game Menu">
+                    <span>☰ Menu</span>
+                </button>
+                <button onclick="restartCurrentGame()" class="py-2 px-4 panel bg-opacity-90 hover:brightness-100 font-bold flex items-center gap-2" style="background-color: var(--accent); color: white;">
+                    <span>🔄 Reset</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Toolbar (Mobile) -->
+    <div class="bg-black/10 py-2 px-4 shrink-0 md:hidden">
+        <div class="flex justify-center items-center">
+            <div class="relative inline-block w-32 align-middle select-none">
+                <div class="flex panel p-1 relative rounded-full">
+                    <div id="mode-indicator" class="absolute left-1 top-1 bottom-1 w-[45%] rounded-full shadow transition-all duration-200" style="background-color: var(--accent);"></div>
+                    <button onclick="setInputMode('dig')" class="relative z-10 w-1/2 text-center text-sm font-bold py-1">⛏️</button>
+                    <button onclick="setInputMode('flag')" class="relative z-10 w-1/2 text-center text-sm font-bold py-1">🚩</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Area -->
+    <main class="flex-1 overflow-auto relative flex items-center justify-center p-8">
+        <div id="game-container" class="relative">
+            <div id="game-board"></div>
+            <!-- Empty State Placeholder -->
+            <div id="empty-state" class="absolute inset-0 flex items-center justify-center pointer-events-none hidden">
+                <p class="text-xl opacity-50">Press Start Game</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- MAIN START MENU / SETTINGS MODAL -->
+    <div id="start-modal" class="fixed inset-0 modal-backdrop z-50 flex items-center justify-center p-4">
+        <div class="panel p-6 max-w-md w-full relative border border-white/10 shadow-2xl">
+            <h2 class="text-2xl font-bold mb-6 text-center border-b border-white/10 pb-4">New Game</h2>
+
+            <!-- Theme Selection -->
+            <div class="mb-6">
+                <label class="block text-sm font-bold opacity-70 mb-2 uppercase tracking-wide">Theme</label>
+                <div class="grid grid-cols-3 gap-2">
+                    <button onclick="selectTheme('default')" id="theme-default" class="p-2 border border-white/20 rounded hover:bg-white/5 active-option">Blurple</button>
+                    <button onclick="selectTheme('light')" id="theme-light" class="p-2 border border-white/20 rounded hover:bg-white/5">Light</button>
+                    <button onclick="selectTheme('90s')" id="theme-90s" class="p-2 border border-white/20 rounded hover:bg-white/5 font-mono">90s OS</button>
+                </div>
+            </div>
+
+            <!-- Difficulty Selection -->
+            <div class="mb-6">
+                <label class="block text-sm font-bold opacity-70 mb-2 uppercase tracking-wide">Difficulty</label>
+                <div class="grid grid-cols-2 gap-2 mb-2">
+                    <button onclick="selectDifficulty('easy')" id="diff-easy" class="p-3 border border-white/20 rounded hover:bg-white/5 active-option flex flex-col items-center justify-center">
+                        <span class="font-bold">Easy</span>
+                        <span class="text-xs opacity-60">9x9 (10)</span>
+                    </button>
+                    <button onclick="selectDifficulty('medium')" id="diff-medium" class="p-3 border border-white/20 rounded hover:bg-white/5 flex flex-col items-center justify-center">
+                        <span class="font-bold">Medium</span>
+                        <span class="text-xs opacity-60">16x16 (40)</span>
+                    </button>
+                    <button onclick="selectDifficulty('hard')" id="diff-hard" class="p-3 border border-white/20 rounded hover:bg-white/5 flex flex-col items-center justify-center">
+                        <span class="font-bold">Hard</span>
+                        <span class="text-xs opacity-60">30x16 (99)</span>
+                    </button>
+                    <button onclick="selectDifficulty('custom')" id="diff-custom" class="p-3 border border-white/20 rounded hover:bg-white/5 flex flex-col items-center justify-center">
+                        <span class="font-bold">Custom</span>
+                        <span class="text-xs opacity-60">Setup...</span>
+                    </button>
+                </div>
+
+                <!-- Custom Inputs (Hidden by default) -->
+                <div id="custom-inputs" class="hidden space-y-3 bg-black/20 p-3 rounded mt-2">
+                    <div class="flex gap-2">
+                        <div class="flex-1">
+                            <label class="text-xs opacity-70">Width</label>
+                            <input type="number" id="inp-width" value="20" min="5" max="40" class="w-full bg-transparent border-b border-white/30 p-1 text-center">
+                        </div>
+                        <div class="flex-1">
+                            <label class="text-xs opacity-70">Height</label>
+                            <input type="number" id="inp-height" value="20" min="5" max="40" class="w-full bg-transparent border-b border-white/30 p-1 text-center">
+                        </div>
+                        <div class="flex-1">
+                            <label class="text-xs opacity-70">Mines</label>
+                            <input type="number" id="inp-mines" value="50" min="1" max="500" class="w-full bg-transparent border-b border-white/30 p-1 text-center">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="startGameFromMenu()" class="w-full py-4 text-xl font-bold text-white shadow-lg hover:brightness-110 rounded transition-transform active:scale-95" style="background-color: var(--accent);">
+                START GAME
+            </button>
+        </div>
+    </div>
+
+    <!-- Win/Loss Modal -->
+    <div id="end-modal" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
+        <div class="panel p-8 max-w-sm w-full text-center transform scale-100 animate-pop border border-white/10">
+            <div id="modal-icon" class="text-6xl mb-4">🏆</div>
+            <h2 id="modal-title" class="text-3xl font-bold mb-2">Victory!</h2>
+            <p id="modal-message" class="opacity-70 mb-6 font-mono">Time: 45s</p>
+
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="openStartMenu()" class="py-3 rounded font-medium border border-white/10 hover:bg-white/5">
+                    Menu
+                </button>
+                <button onclick="restartCurrentGame()" class="py-3 rounded font-bold text-white hover:scale-105 transition-transform" style="background-color: var(--accent);">
+                    Play Again
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <canvas id="confetti" class="fixed inset-0 pointer-events-none z-[60]"></canvas>
+
+    <script>
+        // --- Configuration ---
+        const PRESETS = {
+            easy: { w: 9, h: 9, m: 10 },
+            medium: { w: 16, h: 16, m: 40 },
+            hard: { w: 30, h: 16, m: 99 }
+        };
+
+        // --- State ---
+        let config = { ...PRESETS.easy };
+        let selectedDiff = 'easy';
+
+        let board = [];
+        let isGameActive = false;
+        let isFirstClick = true;
+        let minesLeft = 0;
+        let timeElapsed = 0;
+        let timerInterval = null;
+        let inputMode = 'dig';
+        let currentTheme = 'default';
+        let isSoundOn = false;
+
+        // --- Audio Context & Sound Engine ---
+        let audioCtx = null;
+        let musicInterval = null;
+
+        // Pentatonic Minor Scale (Frequencies) for Generative Music
+        const SCALE = [196.00, 233.08, 261.63, 311.13, 349.23, 392.00, 466.16]; // G Minor Pentatonic approx
+
+        function initAudio() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        window.toggleSound = function() {
+            isSoundOn = !isSoundOn;
+            const btn = document.getElementById('btn-sound');
+
+            if (isSoundOn) {
+                btn.innerText = '🔊';
+                initAudio();
+                startAmbientMusic();
+            } else {
+                btn.innerText = '🔇';
+                stopAmbientMusic();
+            }
+        };
+
+        function playTone(freq, type, duration, vol = 0.1) {
+            if (!isSoundOn || !audioCtx) return;
+
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+            gainNode.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        function playClickSound() {
+            // Reduced volume significantly (0.1 -> 0.03) and added slight pitch variance
+            // Slight pitch variance makes rapid clicking sound less harsh/robotic
+            const variance = (Math.random() * 100) - 50;
+            playTone(800 + variance, 'sine', 0.08, 0.03);
+        }
+
+        function playFlagSound() {
+            // Reduced volume (0.05 -> 0.02)
+            playTone(300, 'square', 0.08, 0.02);
+        }
+
+        function playWinSound() {
+            if (!isSoundOn || !audioCtx) return;
+            const now = audioCtx.currentTime;
+            // Reduced volume for win sound too
+            [440, 554, 659, 880].forEach((freq, i) => { // A Major Arp
+                setTimeout(() => playTone(freq, 'triangle', 0.5, 0.05), i * 100);
+            });
+        }
+
+        function playLoseSound() {
+            if (!isSoundOn || !audioCtx) return;
+            // Descending slide
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.5);
+            gain.gain.setValueAtTime(0.05, audioCtx.currentTime); // Lower volume
+            gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.5);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.5);
+        }
+
+        // --- Generative Ambient Music ---
+        function startAmbientMusic() {
+            if (musicInterval) clearInterval(musicInterval);
+            musicInterval = setInterval(() => {
+                if(!isSoundOn) return;
+                // Play random note from scale with long decay
+                const freq = SCALE[Math.floor(Math.random() * SCALE.length)];
+                // Occasionally play a lower octave bass note
+                const finalFreq = Math.random() > 0.8 ? freq / 2 : freq;
+
+                // Simulated Reverb/Pad using long release sine
+                // Kept background volume low (0.03)
+                playTone(finalFreq, 'sine', 2.0, 0.03);
+            }, 3000); // New note every 3 seconds
+        }
+
+        function stopAmbientMusic() {
+            if (musicInterval) clearInterval(musicInterval);
+            musicInterval = null;
+        }
+
+
+        // --- Global Methods ---
+
+        window.selectTheme = function(theme) {
+            currentTheme = theme;
+            document.body.setAttribute('data-theme', theme);
+
+            ['default', 'light', '90s'].forEach(t => {
+                const btn = document.getElementById(`theme-${t}`);
+                if (btn) {
+                    if(t === theme) btn.classList.add('active-option');
+                    else btn.classList.remove('active-option');
+                }
+            });
+
+            if(theme === '90s') document.body.style.backgroundColor = '#008080';
+            else if(theme === 'light') document.body.style.backgroundColor = '#f1f5f9';
+            else document.body.style.backgroundColor = '#0f0529';
+        };
+
+        window.selectDifficulty = function(diff) {
+            selectedDiff = diff;
+            const customInputs = document.getElementById('custom-inputs');
+
+            ['easy', 'medium', 'hard', 'custom'].forEach(d => {
+                const btn = document.getElementById(`diff-${d}`);
+                if(btn) {
+                    if(d === diff) btn.classList.add('active-option');
+                    else btn.classList.remove('active-option');
+                }
+            });
+
+            if (diff === 'custom') {
+                customInputs.classList.remove('hidden');
+            } else {
+                customInputs.classList.add('hidden');
+                config = { ...PRESETS[diff] };
+            }
+        };
+
+        window.startGameFromMenu = function() {
+            if (selectedDiff === 'custom') {
+                const w = parseInt(document.getElementById('inp-width').value) || 10;
+                const h = parseInt(document.getElementById('inp-height').value) || 10;
+                const m = parseInt(document.getElementById('inp-mines').value) || 10;
+
+                if (w < 5 || h < 5) return alert("Minimum size is 5x5");
+                if (m >= w * h) return alert("Too many mines!");
+
+                config = { w, h, m };
+            }
+
+            document.getElementById('start-modal').classList.add('hidden');
+            initGame();
+        };
+
+        window.openStartMenu = function() {
+            stopTimer();
+            document.getElementById('start-modal').classList.remove('hidden');
+            document.getElementById('end-modal').classList.add('hidden');
+        };
+
+        window.restartCurrentGame = function() {
+            document.getElementById('end-modal').classList.add('hidden');
+            initGame();
+        };
+
+        window.setInputMode = function(mode) {
+            inputMode = mode;
+            const indicator = document.getElementById('mode-indicator');
+            if(indicator) {
+                indicator.style.left = mode === 'dig' ? '4px' : '50%';
+            }
+        };
+
+        // --- Core Engine ---
+
+        function initGame() {
+            const boardEl = document.getElementById('game-board');
+            if (!boardEl) return console.error('Board element not found');
+
+            stopTimer();
+            timeElapsed = 0;
+            const timerEl = document.getElementById('timer');
+            if(timerEl) timerEl.innerText = "000";
+
+            isGameActive = true;
+            isFirstClick = true;
+            minesLeft = config.m;
+            updateMineCounter();
+            board = [];
+
+            boardEl.innerHTML = '';
+
+            // Set styles directly to ensure layout works
+            boardEl.style.gridTemplateColumns = `repeat(${config.w}, 2rem)`;
+
+            // Generate cells
+            const frag = document.createDocumentFragment();
+            for (let i = 0; i < config.w * config.h; i++) {
+                board.push({
+                    index: i,
+                    isMine: false,
+                    isOpen: false,
+                    isFlagged: false,
+                    neighborCount: 0
+                });
+
+                const cell = document.createElement('div');
+                cell.className = 'cell closed';
+                cell.dataset.index = i;
+
+                const inner = document.createElement('span');
+                cell.appendChild(inner);
+                frag.appendChild(cell);
+            }
+            boardEl.appendChild(frag);
+        }
+
+        function placeMines(safeIndex) {
+            let minesPlaced = 0;
+            const safeZone = getNeighbors(safeIndex).map(n => n.index);
+            safeZone.push(safeIndex);
+
+            let attempts = 0;
+            const maxAttempts = 50000;
+
+            while (minesPlaced < config.m && attempts < maxAttempts) {
+                attempts++;
+                const idx = Math.floor(Math.random() * (config.w * config.h));
+                if (!board[idx].isMine && !safeZone.includes(idx)) {
+                    board[idx].isMine = true;
+                    minesPlaced++;
+                }
+            }
+
+            for (let i = 0; i < config.w * config.h; i++) {
+                if (!board[i].isMine) {
+                    const neighbors = getNeighbors(i);
+                    board[i].neighborCount = neighbors.filter(n => n.isMine).length;
+                }
+            }
+        }
+
+        function getNeighbors(index) {
+            const neighbors = [];
+            const x = index % config.w;
+            const y = Math.floor(index / config.w);
+
+            for (let dx = -1; dx <= 1; dx++) {
+                for (let dy = -1; dy <= 1; dy++) {
+                    if (dx === 0 && dy === 0) continue;
+                    const nx = x + dx;
+                    const ny = y + dy;
+                    if (nx >= 0 && nx < config.w && ny >= 0 && ny < config.h) {
+                        const nIdx = ny * config.w + nx;
+                        if(board[nIdx]) neighbors.push(board[nIdx]);
+                    }
+                }
+            }
+            return neighbors;
+        }
+
+        function reveal(index) {
+            if (index < 0 || index >= board.length) return;
+            const cellData = board[index];
+            if (cellData.isOpen || cellData.isFlagged || !isGameActive) return;
+
+            if (isFirstClick) {
+                isFirstClick = false;
+                placeMines(index);
+                startTimer();
+            }
+
+            const boardEl = document.getElementById('game-board');
+            const cellEl = boardEl.children[index];
+
+            if (cellData.isMine) {
+                gameOver(false, index);
+                return;
+            }
+
+            // SUCCESS REVEAL
+            playClickSound();
+
+            cellData.isOpen = true;
+            cellEl.classList.remove('closed');
+            cellEl.classList.add('revealed');
+
+            if (cellData.neighborCount > 0) {
+                cellEl.children[0].textContent = cellData.neighborCount;
+                cellEl.classList.add(`val-${cellData.neighborCount}`);
+                if (currentTheme !== '90s') cellEl.children[0].classList.add('icon-pop');
+            } else {
+                const neighbors = getNeighbors(index);
+                for (const n of neighbors) {
+                    if (!n.isOpen && !n.isFlagged) {
+                        reveal(n.index);
+                    }
+                }
+            }
+            checkWin();
+        }
+
+        function toggleFlag(index) {
+            if (!isGameActive) return;
+            const cellData = board[index];
+            if (cellData.isOpen) return;
+
+            const boardEl = document.getElementById('game-board');
+            const cellEl = boardEl.children[index];
+            const icon = cellEl.children[0];
+
+            if (cellData.isFlagged) {
+                cellData.isFlagged = false;
+                minesLeft++;
+                icon.textContent = '';
+                playFlagSound();
+            } else {
+                if (minesLeft > 0) {
+                    cellData.isFlagged = true;
+                    minesLeft--;
+                    icon.textContent = '🚩';
+                    if (currentTheme !== '90s') icon.classList.add('icon-pop');
+                    playFlagSound();
+                }
+            }
+            updateMineCounter();
+        }
+
+        function chord(index) {
+            if (!isGameActive) return;
+            const cellData = board[index];
+            if (!cellData.isOpen || cellData.neighborCount === 0) return;
+
+            const neighbors = getNeighbors(index);
+            const flaggedCount = neighbors.filter(n => n.isFlagged).length;
+
+            if (flaggedCount === cellData.neighborCount) {
+                if(currentTheme !== '90s') {
+                    const boardEl = document.getElementById('game-board');
+                    const cellEl = boardEl.children[index];
+                    cellEl.style.transform = 'scale(0.9)';
+                    setTimeout(() => cellEl.style.transform = 'scale(1)', 100);
+                }
+                neighbors.forEach(n => {
+                    if (!n.isOpen && !n.isFlagged) reveal(n.index);
+                });
+            }
+        }
+
+        function gameOver(win, triggerIndex) {
+            isGameActive = false;
+            stopTimer();
+            const boardEl = document.getElementById('game-board');
+
+            if (!win) {
+                playLoseSound();
+                board.forEach(c => {
+                    const el = boardEl.children[c.index];
+                    if (c.isMine) {
+                        if (c.index === triggerIndex) {
+                            el.classList.add('mine-exploded');
+                            el.innerHTML = '💥';
+                        } else if (!c.isFlagged) {
+                            el.classList.remove('closed'); // Fixed
+                            el.classList.add('revealed');
+                            el.innerHTML = '💣';
+                        }
+                    } else if (c.isFlagged) {
+                        el.style.backgroundColor = currentTheme === '90s' ? '#ff0000' : '#fecaca';
+                        el.innerHTML = '❌';
+                    }
+                });
+                showEndModal(false);
+            } else {
+                playWinSound();
+                board.forEach(c => {
+                    if (c.isMine && !c.isFlagged) {
+                        const el = boardEl.children[c.index];
+                        el.children[0].textContent = '🚩';
+                        c.isFlagged = true;
+                    }
+                });
+                minesLeft = 0;
+                updateMineCounter();
+                fireConfetti();
+                showEndModal(true);
+            }
+        }
+
+        function checkWin() {
+            const revealedCount = board.filter(c => c.isOpen).length;
+            if (revealedCount === (config.w * config.h) - config.m) {
+                gameOver(true);
+            }
+        }
+
+        function updateMineCounter() {
+            const el = document.getElementById('mines-count');
+            if(el) el.textContent = minesLeft.toString().padStart(3, '0');
+        }
+
+        function startTimer() {
+            timeElapsed = 0;
+            if (timerInterval) clearInterval(timerInterval);
+            const el = document.getElementById('timer');
+            timerInterval = setInterval(() => {
+                timeElapsed++;
+                if(el) el.textContent = timeElapsed.toString().padStart(3, '0');
+                if(timeElapsed > 999) stopTimer();
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+        }
+
+        function showEndModal(win) {
+            const m = document.getElementById('end-modal');
+            const title = document.getElementById('modal-title');
+            const icon = document.getElementById('modal-icon');
+            const msg = document.getElementById('modal-message');
+
+            if(m) m.classList.remove('hidden');
+            if (win) {
+                if(icon) icon.textContent = '🏆';
+                if(title) title.textContent = 'Victory!';
+                if(msg) msg.textContent = `Completed in ${timeElapsed} seconds`;
+            } else {
+                if(icon) icon.textContent = '💀';
+                if(title) title.textContent = 'Game Over';
+                if(msg) msg.textContent = 'Maybe next time!';
+            }
+        }
+
+        function fireConfetti() {
+            const canvas = document.getElementById('confetti');
+            if(!canvas) return;
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            const particles = [];
+            for (let i = 0; i < 150; i++) {
+                particles.push({
+                    x: canvas.width / 2,
+                    y: canvas.height / 2,
+                    vx: (Math.random() - 0.5) * 20,
+                    vy: (Math.random() - 0.5) * 20,
+                    size: Math.random() * 8 + 4,
+                    color: `hsl(${Math.random()*360}, 70%, 50%)`,
+                    life: 100
+                });
+            }
+            function animate() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                let active = false;
+                particles.forEach(p => {
+                    if (p.life > 0) {
+                        active = true;
+                        p.x += p.vx;
+                        p.y += p.vy;
+                        p.vy += 0.2;
+                        p.life--;
+                        p.size *= 0.95;
+                        ctx.fillStyle = p.color;
+                        ctx.fillRect(p.x, p.y, p.size, p.size);
+                    }
+                });
+                if (active) requestAnimationFrame(animate);
+            }
+            animate();
+        }
+
+        // --- Init Listeners ---
+        // We use window.onload to guarantee DOM is ready
+        window.onload = function() {
+            const boardEl = document.getElementById('game-board');
+            if(boardEl) {
+                boardEl.addEventListener('mousedown', (e) => {
+                    const cell = e.target.closest('.cell');
+                    if (!cell) return;
+                    const index = parseInt(cell.dataset.index);
+
+                    if (e.button === 0) {
+                        if (inputMode === 'dig') {
+                            board[index].isOpen ? chord(index) : reveal(index);
+                        } else {
+                            toggleFlag(index);
+                        }
+                    } else if (e.button === 2) {
+                        e.preventDefault();
+                        toggleFlag(index);
+                    }
+                });
+                boardEl.addEventListener('contextmenu', e => e.preventDefault());
+            }
+
+            // Force initial render of Easy mode
+            // Then show menu on top
+            config = { ...PRESETS.easy };
+            initGame();
+            document.getElementById('start-modal').classList.remove('hidden');
+        };
+
+    </script>
+</body>
+</html>
